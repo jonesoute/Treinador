@@ -3,22 +3,26 @@
 import json
 import os
 
-# Caminho padrão do arquivo de perfil
-PERFIL_PATH = os.path.join("data", "perfil_usuario.json")
+BASE_DIR = "data/usuarios"
 
-def salvar_perfil(perfil: dict) -> None:
-    """Salva o perfil do usuário em JSON."""
-    with open(PERFIL_PATH, "w", encoding="utf-8") as f:
+def caminho_perfil(usuario_id):
+    return os.path.join(BASE_DIR, usuario_id, "perfil.json")
+
+def salvar_perfil(usuario_id: str, perfil: dict) -> None:
+    """Salva o perfil do usuário."""
+    dir_usuario = os.path.join(BASE_DIR, usuario_id)
+    os.makedirs(dir_usuario, exist_ok=True)
+    with open(caminho_perfil(usuario_id), "w", encoding="utf-8") as f:
         json.dump(perfil, f, ensure_ascii=False, indent=4)
 
-def carregar_perfil() -> dict:
-    """Carrega o perfil salvo, se existir. Caso contrário, retorna None."""
-    if os.path.exists(PERFIL_PATH):
-        with open(PERFIL_PATH, "r", encoding="utf-8") as f:
+def carregar_perfil(usuario_id: str) -> dict:
+    """Carrega o perfil salvo para um usuário específico."""
+    caminho = caminho_perfil(usuario_id)
+    if os.path.exists(caminho):
+        with open(caminho, "r", encoding="utf-8") as f:
             return json.load(f)
     return None
 
-def perfil_existe() -> bool:
-    """Verifica se já existe perfil salvo."""
-    return os.path.exists(PERFIL_PATH)
-
+def perfil_existe(usuario_id: str) -> bool:
+    """Verifica se já existe perfil salvo para o usuário."""
+    return os.path.exists(caminho_perfil(usuario_id))
