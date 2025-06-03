@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 
 CLIENT_ID = 162780
-CLIENT_SECRET = "COLOQUE_SEU_CLIENT_SECRET_AQUI"
+CLIENT_SECRET = "ced7a10bee89be4b576a815571f64c01f65dd85f"
 REDIRECT_URI = "http://localhost:8501"
 TOKEN_PATH = os.path.join("data", "strava_token.json")
 
