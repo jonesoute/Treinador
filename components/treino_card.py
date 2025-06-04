@@ -74,15 +74,17 @@ def exibir_treinos_semana(usuario_id):
                     salvar_feedbacks(usuario_id, feedbacks)
                     st.success("✅ Feedback salvo!")
 
-                # EXPORTAÇÃO ZWO
+                # Exportação ZWO
                 if treino["modalidade"] == "Ciclismo":
-                    if st.button("📤 Exportar para .ZWO", key=f"zwo_{key}"):
+                    if st.button("📤 Exportar como .ZWO", key=f"zwo_{key}"):
                         caminho = exportar_treino_para_zwo(usuario_id, treino)
                         with open(caminho, "r", encoding="utf-8") as f:
                             conteudo = f.read()
-                        st.download_button(
-                            label="⬇️ Baixar arquivo .ZWO",
-                            data=conteudo,
-                            file_name=os.path.basename(caminho),
-                            mime="application/xml"
-                        )
+                        st.download_button("⬇️ Baixar .ZWO", data=conteudo, file_name=os.path.basename(caminho), mime="application/xml")
+                # Exportação TCM
+                    if st.button("📤 Exportar como .TCX", key=f"tcx_{key}"):
+                        from utils.exportador import exportar_treino_para_tcx
+                        caminho = exportar_treino_para_tcx(usuario_id, treino)
+                        with open(caminho, "r", encoding="utf-8") as f:
+                            conteudo = f.read()
+                        st.download_button("⬇️ Baixar .TCX", data=conteudo, file_name=os.path.basename(caminho), mime="application/xml")
