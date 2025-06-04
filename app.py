@@ -11,7 +11,7 @@ from utils.strava_api import (
 )
 from components.perfil_form import exibir_formulario_perfil
 
-# CONFIGURAÇÃO
+# CONFIG
 st.set_page_config(page_title="Treinador Virtual de Ciclismo e Corrida", layout="wide")
 st.title("🏁 Treinador Virtual de Ciclismo e Corrida")
 
@@ -56,27 +56,41 @@ if not token_existe(usuario_id):
 else:
     st.sidebar.success("Strava conectado ✅")
 
-# MENU LATERAL DINÂMICO
+# MENU LATERAL
 st.sidebar.title("📂 Menu")
 modalidades = perfil.get("modalidades", ["Ciclismo"])
 
 paginas = ["🏠 Início"]
 if "Ciclismo" in modalidades or "Corrida" in modalidades:
-    paginas.extend(["📅 Atividades", "📆 Calendário", "📊 Dashboard"])
-
+    paginas.extend([
+        "📅 Atividades",
+        "📆 Calendário",
+        "📊 Dashboard",
+        "🧠 Treinos da Semana"
+    ])
 paginas.append("⚙️ Perfil")
 
 pagina = st.sidebar.radio("Acesse uma seção:", paginas)
 
-# TELAS
+# ===== TELAS =====
 if pagina == "🏠 Início":
     st.header(f"Bem-vindo, {perfil['nome']} 👋")
     st.markdown("Use o menu lateral para navegar entre as funcionalidades do treinador virtual.")
-    st.info("Você pode atualizar seus treinos com o botão abaixo:")
 
-    if st.button("🔄 Atualizar treinos do Strava"):
-        atividades = coletar_e_salvar_atividades(usuario_id)
-        st.success(f"{len(atividades)} atividades atualizadas com sucesso.")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("📡 Importar treinos do Strava")
+        if st.button("🔄 Atualizar treinos"):
+            atividades = coletar_e_salvar_atividades(usuario_id)
+            st.success(f"{len(atividades)} atividades atualizadas com sucesso.")
+
+    with col2:
+        st.subheader("📅 Gerar semana de treinos")
+        if st.button("🧠 Gerar Treinos da Semana"):
+            from utils.treino_generator import gerar_semana_treinos
+            treinos = gerar_semana_treinos(usuario_id)
+            st.success("✅ Plano semanal gerado com sucesso!")
 
 elif pagina == "📅 Atividades":
     st.header("📋 Últimas Atividades Salvas")
@@ -99,6 +113,10 @@ elif pagina == "📆 Calendário":
 elif pagina == "📊 Dashboard":
     from components.dashboard import exibir_dashboard
     exibir_dashboard(usuario_id, perfil.get("ftp", 200))
+
+elif pagina == "🧠 Treinos da Semana":
+    from components.treino_card import exibir_treinos_semana
+    exibir_treinos_semana(usuario_id)
 
 elif pagina == "⚙️ Perfil":
     st.header("⚙️ Informações do Perfil")
