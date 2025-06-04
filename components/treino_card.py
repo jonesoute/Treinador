@@ -4,6 +4,7 @@ import os
 import json
 import streamlit as st
 from datetime import date
+from utils.exportador import exportar_treino_para_zwo
 
 def caminho_treinos(usuario_id):
     return os.path.join("data", "usuarios", usuario_id, "treinos_semana.json")
@@ -44,10 +45,9 @@ def exibir_treinos_semana(usuario_id):
     for data_str in sorted(treinos.keys()):
         dia_data = date.fromisoformat(data_str)
         if dia_data < hoje:
-            continue  # não exibe treinos passados
+            continue
 
         st.subheader(f"📅 {dia_data.strftime('%A, %d/%m')}")
-
         for i, treino in enumerate(treinos[data_str]):
             key = f"{data_str}_{i}"
             with st.container(border=True):
@@ -57,6 +57,7 @@ def exibir_treinos_semana(usuario_id):
                 st.markdown(f"**Zonas alvo:** {treino['zona']}")
                 st.markdown(f"**Duração:** {treino['tempo']} min")
 
+                # FEEDBACK
                 st.markdown("**🗣️ Como você se sentiu após esse treino?**")
                 sentimento = st.selectbox(
                     "Selecione uma opção:",
@@ -73,3 +74,15 @@ def exibir_treinos_semana(usuario_id):
                     salvar_feedbacks(usuario_id, feedbacks)
                     st.success("✅ Feedback salvo!")
 
+                # EXPORTAÇÃO ZWO
+                if treino["modalidade"] == "Ciclismo":
+                    if st.button("📤 Exportar para .ZWO", key=f"zwo_{key}"):
+                        caminho = exportar_treino_para_zwo(usuario_id, treino)
+                        with open(caminho, "r", encoding="utf-8") as f:
+                            conteudo = f.read()
+                        st.download_button(
+                            label="⬇️ Baixar arquivo .ZWO",
+                            data=conteudo,
+                            file_name=os.path.basename(caminho),
+                            mime="application/xml"
+                        )
