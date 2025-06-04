@@ -66,3 +66,7 @@ else:
             st.markdown(f"- **{a['name']}** | {a['distance']/1000:.1f} km | {a['moving_time']//60} min")
     except Exception as e:
         st.error(f"Erro ao buscar atividades: {e}")
+        
+elif pagina == "📊 Dashboard":
+    from components.dashboard import exibir_dashboard
+    exibir_dashboard(usuario_id, perfil.get("ftp", 200))
