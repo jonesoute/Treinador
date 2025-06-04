@@ -7,15 +7,16 @@ from utils.strava_api import (
     carregar_token,
     gerar_link_autenticacao,
     autenticar_usuario,
-    buscar_atividades
+    coletar_e_salvar_atividades,
+    carregar_atividades
 )
 from components.perfil_form import exibir_formulario_perfil
 
-# CONFIGURAÇÕES GERAIS
+# CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Treinador Virtual de Ciclismo", layout="wide")
 st.title("🚴 Treinador Virtual de Ciclismo")
 
-# LOGIN DO USUÁRIO
+# IDENTIFICAÇÃO DO USUÁRIO
 st.sidebar.header("👤 Identificação do Atleta")
 usuario_id = st.sidebar.text_input("Digite seu nome de usuário", max_chars=30)
 
@@ -25,7 +26,7 @@ if not usuario_id:
 
 st.success(f"Usuário ativo: {usuario_id}")
 
-# FLUXO DE PERFIL
+# VERIFICAÇÃO DE PERFIL
 if not perfil_existe(usuario_id):
     st.info("Vamos configurar seu perfil.")
     perfil = exibir_formulario_perfil()
@@ -36,9 +37,8 @@ if not perfil_existe(usuario_id):
 else:
     perfil = carregar_perfil(usuario_id)
 
-# FLUXO DE AUTENTICAÇÃO STRAVA
+# AUTENTICAÇÃO COM STRAVA
 st.sidebar.subheader("🔗 Conexão com Strava")
-
 if not token_existe(usuario_id):
     st.sidebar.markdown("Conecte sua conta Strava para importar seus treinos:")
     link = gerar_link_autenticacao()
@@ -57,16 +57,38 @@ if not token_existe(usuario_id):
 else:
     st.sidebar.success("Strava conectado ✅")
 
-    # CARREGAR ATIVIDADES (exibição simples por enquanto)
-    st.header("📋 Últimos Treinos (últimos 90 dias)")
-    try:
-        atividades = buscar_atividades(usuario_id)
-        st.write(f"Foram encontradas {len(atividades)} atividades.")
-        for a in atividades[:5]:  # mostra só os 5 mais recentes
-            st.markdown(f"- **{a['name']}** | {a['distance']/1000:.1f} km | {a['moving_time']//60} min")
-    except Exception as e:
-        st.error(f"Erro ao buscar atividades: {e}")
-        
+# NAVEGAÇÃO PRINCIPAL
+st.sidebar.title("📂 Menu")
+pagina = st.sidebar.radio("Acesse uma seção:", ["🏠 Início", "📅 Atividades", "📊 Dashboard", "⚙️ Perfil"])
+
+if pagina == "🏠 Início":
+    st.header(f"Bem-vindo, {perfil['nome']} 👋")
+    st.markdown("Use o menu lateral para navegar entre as funcionalidades do treinador virtual.")
+    st.info("Você pode atualizar seus treinos com o botão abaixo:")
+
+    if st.button("🔄 Atualizar treinos do Strava"):
+        atividades = coletar_e_salvar_atividades(usuario_id)
+        st.success(f"{len(atividades)} atividades atualizadas com sucesso.")
+
+elif pagina == "📅 Atividades":
+    st.header("📋 Últimas Atividades Salvas")
+    atividades = carregar_atividades(usuario_id)
+
+    if not atividades:
+        st.warning("Nenhuma atividade foi encontrada. Atualize pelo botão na tela inicial.")
+    else:
+        st.write(f"Exibindo as últimas {min(5, len(atividades))} de {len(atividades)} atividades:")
+        for a in atividades[:5]:
+            st.markdown(
+                f"- **{a['name']}** | {a['distance']/1000:.1f} km | "
+                f"{a['moving_time']//60} min | {a.get('start_date_local', 'sem data')[:10]}"
+            )
+
 elif pagina == "📊 Dashboard":
     from components.dashboard import exibir_dashboard
     exibir_dashboard(usuario_id, perfil.get("ftp", 200))
+
+elif pagina == "⚙️ Perfil":
+    st.header("⚙️ Informações do Perfil")
+    st.json(perfil)
+    st.warning("A edição de perfil será implementada em breve.")
