@@ -5,7 +5,7 @@ from datetime import datetime
 
 def exibir_formulario_perfil():
     st.title("🏁 Configuração Inicial - Perfil do Atleta")
-    st.markdown("Preencha os dados abaixo para que possamos personalizar seu plano de treinamento:")
+    st.markdown("Preencha os dados abaixo para personalizar seu plano de treinamento:")
 
     with st.form("form_perfil"):
         nome = st.text_input("Nome completo")
@@ -18,10 +18,17 @@ def exibir_formulario_perfil():
         fc_repouso = st.number_input("Frequência Cardíaca em Repouso (opcional)", min_value=30, max_value=100, step=1)
         fc_maxima = st.number_input("Frequência Cardíaca Máxima (opcional)", min_value=100, max_value=220, step=1)
 
-        experiencia = st.selectbox("Experiência com ciclismo", ["Iniciante", "Intermediário", "Avançado"])
+        experiencia = st.selectbox("Experiência com ciclismo/corrida", ["Iniciante", "Intermediário", "Avançado"])
         objetivo = st.text_input("Objetivo principal (ex: ganhar resistência, competir...)")
 
         referencia_treino = st.radio("Preferência de prescrição de treino", ["Potência", "Frequência Cardíaca"])
+
+        st.markdown("### 🏃🚴 Modalidades praticadas")
+        modalidades = st.multiselect(
+            "Escolha os esportes que deseja treinar com a IA:",
+            options=["Ciclismo", "Corrida"],
+            default=["Ciclismo"]
+        )
 
         st.markdown("### 🗓️ Dias disponíveis e tempo máximo por dia")
         dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
@@ -50,6 +57,7 @@ def exibir_formulario_perfil():
             "experiencia": experiencia,
             "objetivo": objetivo,
             "referencia_treino": referencia_treino,
+            "modalidades": modalidades,
             "dias_disponiveis": dias_disponiveis,
             "horas_disponiveis": horas_disponiveis,
             "historico_lesoes": historico_lesoes,
@@ -59,4 +67,3 @@ def exibir_formulario_perfil():
         return perfil
 
     return None
-
