@@ -15,7 +15,7 @@ from components.perfil_form import exibir_formulario_perfil
 st.set_page_config(page_title="Treinador Virtual de Ciclismo e Corrida", layout="wide")
 st.title("🏁 Treinador Virtual de Ciclismo e Corrida")
 
-# LOGIN DO USUÁRIO
+# IDENTIFICAÇÃO DO USUÁRIO
 st.sidebar.header("👤 Identificação do Atleta")
 usuario_id = st.sidebar.text_input("Digite seu nome de usuário", max_chars=30)
 
@@ -36,7 +36,7 @@ if not perfil_existe(usuario_id):
 else:
     perfil = carregar_perfil(usuario_id)
 
-# AUTENTICAÇÃO STRAVA
+# STRAVA
 st.sidebar.subheader("🔗 Conexão com Strava")
 if not token_existe(usuario_id):
     st.sidebar.markdown("Conecte sua conta Strava para importar seus treinos:")
@@ -56,16 +56,13 @@ if not token_existe(usuario_id):
 else:
     st.sidebar.success("Strava conectado ✅")
 
-# MENU PRINCIPAL
+# MENU LATERAL DINÂMICO
 st.sidebar.title("📂 Menu")
-
-# Modalidades ativas
 modalidades = perfil.get("modalidades", ["Ciclismo"])
 
 paginas = ["🏠 Início"]
 if "Ciclismo" in modalidades or "Corrida" in modalidades:
-    paginas.append("📅 Atividades")
-    paginas.append("📊 Dashboard")
+    paginas.extend(["📅 Atividades", "📆 Calendário", "📊 Dashboard"])
 
 paginas.append("⚙️ Perfil")
 
@@ -95,9 +92,12 @@ elif pagina == "📅 Atividades":
                 f"{a['moving_time']//60} min | Tipo: {tipo} | {a.get('start_date_local', '')[:10]}"
             )
 
+elif pagina == "📆 Calendário":
+    from components.calendar import exibir_calendario_provas
+    exibir_calendario_provas(usuario_id)
+
 elif pagina == "📊 Dashboard":
     from components.dashboard import exibir_dashboard
-    st.info("Visualize seus dados de carga por modalidade:")
     exibir_dashboard(usuario_id, perfil.get("ftp", 200))
 
 elif pagina == "⚙️ Perfil":
