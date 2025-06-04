@@ -72,52 +72,73 @@ def exportar_treino_para_zwo(usuario_id, treino, nome_arquivo=None):
         f.write(xml_str)
 
 def exportar_treino_para_tcx(usuario_id, treino, nome_arquivo=None):
-    """
-    Exporta um treino para o formato .TCX simples (Garmin)
-    """
+    import xml.etree.ElementTree as ET
+    from xml.dom import minidom
 
     if not nome_arquivo:
         nome_arquivo = f"{treino['tipo'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.tcx"
 
-    # Criar estrutura XML
-    training_center_database = ET.Element('TrainingCenterDatabase', xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2")
+    sport = "Running" if treino["modalidade"] == "Corrida" else "Biking"
 
-    workouts = ET.SubElement(training_center_database, 'Workouts')
-    workout = ET.SubElement(workouts, 'Workout', Sport="Biking")
-    ET.SubElement(workout, 'Name').text = treino["tipo"]
+    tcx = ET.Element("TrainingCenterDatabase", {
+        "xmlns": "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2",
+        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "xsi:schemaLocation": "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 "
+                              "http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"
+    })
 
-    # Bloco de aquecimento (10min)
-    step1 = ET.SubElement(workout, 'Step')
-    ET.SubElement(step1, 'Name').text = "Aquecimento"
-    ET.SubElement(step1, 'Duration', xsi_type="TimeDurationTarget").text = "600"
-    ET.SubElement(step1, 'Intensity').text = "Warmup"
+    workouts = ET.SubElement(tcx, "Workouts")
+    workout = ET.SubElement(workouts, "Workout", Sport=sport)
+    ET.SubElement(workout, "Name").text = treino["tipo"]
 
-    # Intervalos (5x 4min)
+    # ETAPA 1 – Aquecimento
+    step1 = ET.SubElement(workout, "Step")
+    ET.SubElement(step1, "Name").text = "Aquecimento"
+    ET.SubElement(step1, "Duration").set("xsi:type", "Time_t")
+    ET.SubElement(step1, "Duration").text = "600"
+    ET.SubElement(step1, "Intensity").text = "Warmup"
+    hr1 = ET.SubElement(step1, "HeartRate")
+    ET.SubElement(hr1, "HeartRateZone").text = "1"
+
+    # ETAPA 2 – Intervalos com alvo
     for i in range(5):
-        step = ET.SubElement(workout, 'Step')
-        ET.SubElement(step, 'Name').text = f"Intervalo {i+1}"
-        ET.SubElement(step, 'Duration', xsi_type="TimeDurationTarget").text = "240"
-        ET.SubElement(step, 'Intensity').text = "Active"
+        step = ET.SubElement(workout, "Step")
+        ET.SubElement(step, "Name").text = f"Intervalo {i+1}"
+        ET.SubElement(step, "Duration").set("xsi:type", "Time_t")
+        ET.SubElement(step, "Duration").text = "240"
+        ET.SubElement(step, "Intensity").text = "Active"
 
-        rest = ET.SubElement(workout, 'Step')
-        ET.SubElement(rest, 'Name').text = f"Recuperação {i+1}"
-        ET.SubElement(rest, 'Duration', xsi_type="TimeDurationTarget").text = "180"
-        ET.SubElement(rest, 'Intensity').text = "Resting"
+        # FC alvo
+        fc_target = ET.SubElement(step, "Target")
+        ET.SubElement(fc_target, "HeartRateZone").text = "4"
 
-    # Cooldown
-    step_final = ET.SubElement(workout, 'Step')
-    ET.SubElement(step_final, 'Name').text = "Resfriamento"
-    ET.SubElement(step_final, 'Duration', xsi_type="TimeDurationTarget").text = "600"
-    ET.SubElement(step_final, 'Intensity').text = "Cooldown"
+        # Simulação de potência em Notas
+        ET.SubElement(step, "Notes").text = "Simular 90-100% FTP (Z4)"
 
-    xml_str = ET.tostring(training_center_database, encoding="utf-8", method="xml")
-    xml_pretty = xml.dom.minidom.parseString(xml_str).toprettyxml(indent="  ")
+        # Recuperação
+        rest = ET.SubElement(workout, "Step")
+        ET.SubElement(rest, "Name").text = f"Recuperação {i+1}"
+        ET.SubElement(rest, "Duration").set("xsi:type", "Time_t")
+        ET.SubElement(rest, "Duration").text = "180"
+        ET.SubElement(rest, "Intensity").text = "Resting"
+        hr2 = ET.SubElement(rest, "Target")
+        ET.SubElement(hr2, "HeartRateZone").text = "2"
 
+    # ETAPA 3 – Cooldown
+    stepf = ET.SubElement(workout, "Step")
+    ET.SubElement(stepf, "Name").text = "Cooldown"
+    ET.SubElement(stepf, "Duration").set("xsi:type", "Time_t")
+    ET.SubElement(stepf, "Duration").text = "600"
+    ET.SubElement(stepf, "Intensity").text = "Cooldown"
+    ET.SubElement(ET.SubElement(stepf, "Target"), "HeartRateZone").text = "1"
+
+    # Salvar arquivo
+    xml_str = minidom.parseString(ET.tostring(tcx)).toprettyxml(indent="  ")
     pasta_saida = os.path.join("data", "usuarios", usuario_id, "exportados")
     os.makedirs(pasta_saida, exist_ok=True)
 
     caminho = os.path.join(pasta_saida, nome_arquivo)
     with open(caminho, "w", encoding="utf-8") as f:
-        f.write(xml_pretty)
+        f.write(xml_str)
 
     return caminho
