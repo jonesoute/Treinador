@@ -13,6 +13,43 @@ def salvar_treinos_semana(usuario_id, treinos):
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(treinos, f, ensure_ascii=False, indent=4)
 
+def carregar_feedbacks(usuario_id):
+    caminho = os.path.join("data", "usuarios", usuario_id, "feedbacks.json")
+    if os.path.exists(caminho):
+        with open(caminho, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def ajustar_carga_por_feedback(usuario_id):
+    feedbacks = carregar_feedbacks(usuario_id)
+    hoje = date.today()
+    ultima_semana = [hoje - timedelta(days=i) for i in range(1, 8)]
+
+    valores_rpe = {
+        "Muito fácil": 1,
+        "Fácil": 2,
+        "Moderado": 3,
+        "Difícil": 4,
+        "Exaustivo": 5
+    }
+
+    rpes = []
+    for fb in feedbacks.values():
+        data_fb = datetime.fromisoformat(fb["data"]).date()
+        if data_fb in ultima_semana:
+            rpes.append(valores_rpe.get(fb["sentimento"], 3))
+
+    if not rpes:
+        return 0, True
+
+    media = sum(rpes) / len(rpes)
+    if media <= 2.0:
+        return +1, False
+    elif media >= 4.0:
+        return -1, False
+    else:
+        return 0, False
+
 def obter_fase_treinamento(usuario_id):
     perfil = carregar_perfil(usuario_id)
     data_inicio = perfil.get("data_criacao", date.today().isoformat())
@@ -31,7 +68,6 @@ def obter_fase_treinamento(usuario_id):
         elif semanas_ate_prova <= 3:
             return "pre-prova"
 
-    # Fases padrão por semanas
     if semanas < 4:
         return "base"
     elif semanas < 8:
@@ -47,15 +83,23 @@ def gerar_semana_treinos(usuario_id):
     dias_disponiveis = perfil.get("dias_disponiveis", [])
     horas_disponiveis = perfil.get("horas_disponiveis", {})
     ftp = perfil.get("ftp", 200)
-    
+
     df = preparar_dataframe_atividades(usuario_id, ftp)
     cargas = calcular_cargas(df)
     fase = obter_fase_treinamento(usuario_id)
+    ajuste_feedback, sem_feedback = ajustar_carga_por_feedback(usuario_id)
 
     hoje = date.today()
     plano = {}
 
-    for i in range(7):  # gera os próximos 7 dias
+    if sem_feedback:
+        plano["_mensagem"] = (
+            "⚠️ Você não registrou nenhum feedback nos últimos 7 dias. "
+            "A intensidade dos treinos será mantida sem ajustes automáticos. "
+            "Responder aos feedbacks permite que o plano se adapte melhor ao seu corpo e evolução."
+        )
+
+    for i in range(7):
         dia = hoje + timedelta(days=i)
         nome_dia = dia.strftime("%A")
         if nome_dia not in dias_disponiveis:
@@ -64,23 +108,24 @@ def gerar_semana_treinos(usuario_id):
         tempo_max = horas_disponiveis.get(nome_dia, 1.0)
         tipo_treino = "leve" if cargas["TSB"] < -10 else "moderado" if cargas["TSB"] < 10 else "intenso"
 
-        # Ajuste pela fase
         if fase == "base" and tipo_treino == "intenso":
             tipo_treino = "moderado"
-        elif fase == "taper":
+        elif fase in ["taper", "transicao"]:
             tipo_treino = "leve"
-        elif fase == "transicao":
+
+        if ajuste_feedback == +1 and tipo_treino == "moderado":
+            tipo_treino = "intenso"
+        elif ajuste_feedback == -1 and tipo_treino == "intenso":
+            tipo_treino = "moderado"
+        elif ajuste_feedback == -1 and tipo_treino == "moderado":
             tipo_treino = "leve"
 
         plano[dia.isoformat()] = []
-
         for modalidade in modalidades:
             if modalidade == "Ciclismo":
                 treino = gerar_treino_ciclismo(tipo_treino, tempo_max, fase)
             elif modalidade == "Corrida":
                 treino = gerar_treino_corrida(tipo_treino, tempo_max, fase)
-            else:
-                continue
             plano[dia.isoformat()].append(treino)
 
     salvar_treinos_semana(usuario_id, plano)
