@@ -70,5 +70,53 @@ def exportar_treino_para_zwo(usuario_id, treino, nome_arquivo=None):
     with open(caminho_completo, "w", encoding="utf-8") as f:
         f.write(xml_str)
 
-    return caminho_completo
+def exportar_treino_para_tcx(usuario_id, treino, nome_arquivo=None):
+    """
+    Exporta um treino para o formato .TCX simples (Garmin)
+    """
 
+    if not nome_arquivo:
+        nome_arquivo = f"{treino['tipo'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.tcx"
+
+    # Criar estrutura XML
+    training_center_database = ET.Element('TrainingCenterDatabase', xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2")
+
+    workouts = ET.SubElement(training_center_database, 'Workouts')
+    workout = ET.SubElement(workouts, 'Workout', Sport="Biking")
+    ET.SubElement(workout, 'Name').text = treino["tipo"]
+
+    # Bloco de aquecimento (10min)
+    step1 = ET.SubElement(workout, 'Step')
+    ET.SubElement(step1, 'Name').text = "Aquecimento"
+    ET.SubElement(step1, 'Duration', xsi_type="TimeDurationTarget").text = "600"
+    ET.SubElement(step1, 'Intensity').text = "Warmup"
+
+    # Intervalos (5x 4min)
+    for i in range(5):
+        step = ET.SubElement(workout, 'Step')
+        ET.SubElement(step, 'Name').text = f"Intervalo {i+1}"
+        ET.SubElement(step, 'Duration', xsi_type="TimeDurationTarget").text = "240"
+        ET.SubElement(step, 'Intensity').text = "Active"
+
+        rest = ET.SubElement(workout, 'Step')
+        ET.SubElement(rest, 'Name').text = f"Recuperação {i+1}"
+        ET.SubElement(rest, 'Duration', xsi_type="TimeDurationTarget").text = "180"
+        ET.SubElement(rest, 'Intensity').text = "Resting"
+
+    # Cooldown
+    step_final = ET.SubElement(workout, 'Step')
+    ET.SubElement(step_final, 'Name').text = "Resfriamento"
+    ET.SubElement(step_final, 'Duration', xsi_type="TimeDurationTarget").text = "600"
+    ET.SubElement(step_final, 'Intensity').text = "Cooldown"
+
+    xml_str = ET.tostring(training_center_database, encoding="utf-8", method="xml")
+    xml_pretty = xml.dom.minidom.parseString(xml_str).toprettyxml(indent="  ")
+
+    pasta_saida = os.path.join("data", "usuarios", usuario_id, "exportados")
+    os.makedirs(pasta_saida, exist_ok=True)
+
+    caminho = os.path.join(pasta_saida, nome_arquivo)
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write(xml_pretty)
+
+    return caminho
