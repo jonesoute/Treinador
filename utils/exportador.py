@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
 import xml.dom.minidom
+import xml.etree.ElementTree as ET
 
 def exportar_treino_para_zwo(usuario_id, treino, nome_arquivo=None):
     """
