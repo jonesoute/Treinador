@@ -4,7 +4,7 @@ import os
 import json
 import streamlit as st
 from datetime import date
-from utils.exportador import exportar_treino_para_zwo
+from utils.exportador import exportar_treino_para_zwo, exportar_treino_para_tcx
 
 def caminho_treinos(usuario_id):
     return os.path.join("data", "usuarios", usuario_id, "treinos_semana.json")
@@ -56,6 +56,7 @@ def exibir_treinos_semana(usuario_id):
                 st.markdown(f"**Descrição:** {treino['descricao']}")
                 st.markdown(f"**Zonas alvo:** {treino['zona']}")
                 st.markdown(f"**Duração:** {treino['tempo']} min")
+                st.markdown(f"**📆 Fase de treinamento:** `{treino.get('fase', 'desconhecida').capitalize()}`")
 
                 # FEEDBACK
                 st.markdown("**🗣️ Como você se sentiu após esse treino?**")
@@ -74,16 +75,15 @@ def exibir_treinos_semana(usuario_id):
                     salvar_feedbacks(usuario_id, feedbacks)
                     st.success("✅ Feedback salvo!")
 
-                # Exportação ZWO
+                # EXPORTAÇÃO
                 if treino["modalidade"] == "Ciclismo":
                     if st.button("📤 Exportar como .ZWO", key=f"zwo_{key}"):
                         caminho = exportar_treino_para_zwo(usuario_id, treino)
                         with open(caminho, "r", encoding="utf-8") as f:
                             conteudo = f.read()
                         st.download_button("⬇️ Baixar .ZWO", data=conteudo, file_name=os.path.basename(caminho), mime="application/xml")
-                # Exportação TCM
+
                     if st.button("📤 Exportar como .TCX", key=f"tcx_{key}"):
-                        from utils.exportador import exportar_treino_para_tcx
                         caminho = exportar_treino_para_tcx(usuario_id, treino)
                         with open(caminho, "r", encoding="utf-8") as f:
                             conteudo = f.read()
