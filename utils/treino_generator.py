@@ -2,7 +2,7 @@
 
 import os
 import json
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from utils.analysis import preparar_dataframe_atividades, calcular_cargas
 from components.calendar import carregar_provas
 from utils.perfil import carregar_perfil
@@ -13,6 +13,34 @@ def salvar_treinos_semana(usuario_id, treinos):
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(treinos, f, ensure_ascii=False, indent=4)
 
+def obter_fase_treinamento(usuario_id):
+    perfil = carregar_perfil(usuario_id)
+    data_inicio = perfil.get("data_criacao", date.today().isoformat())
+    data_inicio = datetime.fromisoformat(data_inicio).date()
+    hoje = date.today()
+    semanas = (hoje - data_inicio).days // 7
+
+    provas = carregar_provas(usuario_id)
+    provas_ordenadas = sorted(provas, key=lambda p: p["data_inicio"])
+    if provas_ordenadas:
+        data_prova = datetime.fromisoformat(provas_ordenadas[0]["data_inicio"]).date()
+        semanas_ate_prova = (data_prova - hoje).days // 7
+
+        if semanas_ate_prova <= 1:
+            return "taper"
+        elif semanas_ate_prova <= 3:
+            return "pre-prova"
+
+    # Fases padrão por semanas
+    if semanas < 4:
+        return "base"
+    elif semanas < 8:
+        return "especifica"
+    elif semanas < 10:
+        return "pre-prova"
+    else:
+        return "transicao"
+
 def gerar_semana_treinos(usuario_id):
     perfil = carregar_perfil(usuario_id)
     modalidades = perfil.get("modalidades", ["Ciclismo"])
@@ -22,7 +50,7 @@ def gerar_semana_treinos(usuario_id):
     
     df = preparar_dataframe_atividades(usuario_id, ftp)
     cargas = calcular_cargas(df)
-    provas = carregar_provas(usuario_id)
+    fase = obter_fase_treinamento(usuario_id)
 
     hoje = date.today()
     plano = {}
@@ -36,13 +64,21 @@ def gerar_semana_treinos(usuario_id):
         tempo_max = horas_disponiveis.get(nome_dia, 1.0)
         tipo_treino = "leve" if cargas["TSB"] < -10 else "moderado" if cargas["TSB"] < 10 else "intenso"
 
+        # Ajuste pela fase
+        if fase == "base" and tipo_treino == "intenso":
+            tipo_treino = "moderado"
+        elif fase == "taper":
+            tipo_treino = "leve"
+        elif fase == "transicao":
+            tipo_treino = "leve"
+
         plano[dia.isoformat()] = []
 
         for modalidade in modalidades:
             if modalidade == "Ciclismo":
-                treino = gerar_treino_ciclismo(tipo_treino, tempo_max)
+                treino = gerar_treino_ciclismo(tipo_treino, tempo_max, fase)
             elif modalidade == "Corrida":
-                treino = gerar_treino_corrida(tipo_treino, tempo_max)
+                treino = gerar_treino_corrida(tipo_treino, tempo_max, fase)
             else:
                 continue
             plano[dia.isoformat()].append(treino)
@@ -50,57 +86,62 @@ def gerar_semana_treinos(usuario_id):
     salvar_treinos_semana(usuario_id, plano)
     return plano
 
-def gerar_treino_ciclismo(intensidade, tempo_horas):
+def gerar_treino_ciclismo(intensidade, tempo_horas, fase="base"):
     tempo_min = round(tempo_horas * 60)
     if intensidade == "leve":
         return {
             "modalidade": "Ciclismo",
-            "tipo": "Recuperação ativa",
+            "tipo": f"Recuperação ativa ({fase})",
             "descricao": f"Pedalada leve contínua, Z1-Z2, {tempo_min} min.",
             "zona": "Z1-Z2",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
     elif intensidade == "moderado":
         return {
             "modalidade": "Ciclismo",
-            "tipo": "Endurance + blocos",
-            "descricao": f"{tempo_min - 30} min endurance + 3x5min Z4 com 5min Z2 entre blocos.",
+            "tipo": f"Endurance com blocos ({fase})",
+            "descricao": f"{tempo_min - 30}min Z2 + 3x5min Z4 com 5min Z2.",
             "zona": "Z2-Z4",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
     elif intensidade == "intenso":
         return {
             "modalidade": "Ciclismo",
-            "tipo": "Intervalado",
-            "descricao": f"Aquecimento 15min + 5x4min Z5 (3min Z2 entre) + cooldown.",
+            "tipo": f"Intervalado intenso ({fase})",
+            "descricao": f"15min Z2 + 5x4min Z5 (3min Z2 entre) + cooldown.",
             "zona": "Z2-Z5",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
 
-def gerar_treino_corrida(intensidade, tempo_horas):
+def gerar_treino_corrida(intensidade, tempo_horas, fase="base"):
     tempo_min = round(tempo_horas * 60)
     if intensidade == "leve":
         return {
             "modalidade": "Corrida",
-            "tipo": "Trote regenerativo",
+            "tipo": f"Trote regenerativo ({fase})",
             "descricao": f"Corrida leve contínua, R1-R2, {tempo_min} min.",
             "zona": "R1-R2",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
     elif intensidade == "moderado":
         return {
             "modalidade": "Corrida",
-            "tipo": "Fartlek moderado",
-            "descricao": f"{tempo_min - 20} min em ritmo confortável + 6x1min forte com 1min leve.",
+            "tipo": f"Fartlek moderado ({fase})",
+            "descricao": f"{tempo_min - 20}min ritmo confortável + 6x1min forte.",
             "zona": "R2-R4",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
     elif intensidade == "intenso":
         return {
             "modalidade": "Corrida",
-            "tipo": "Intervalado",
-            "descricao": f"Aquecimento 10min + 4x5min ritmo forte (Z4-Z5) com 3min leve.",
+            "tipo": f"Intervalado forte ({fase})",
+            "descricao": f"10min aquecimento + 4x5min ritmo forte + cooldown.",
             "zona": "R3-R5",
-            "tempo": tempo_min
+            "tempo": tempo_min,
+            "fase": fase
         }
-
