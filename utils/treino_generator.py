@@ -77,6 +77,52 @@ def obter_fase_treinamento(usuario_id):
     else:
         return "transicao"
 
+def ajustar_para_competicoes(plano, usuario_id):
+    provas = carregar_provas(usuario_id)
+    hoje = date.today()
+
+    for prova in provas:
+        data_inicio = datetime.fromisoformat(prova["data_inicio"]).date()
+        data_fim = datetime.fromisoformat(prova["data_fim"]).date()
+        dias_competicao = (data_fim - data_inicio).days + 1
+
+        for i in range(dias_competicao):
+            dia = data_inicio + timedelta(days=i)
+            key = dia.isoformat()
+            plano[key] = [{
+                "modalidade": prova["tipo"],
+                "tipo": "🏁 Dia de Competição",
+                "descricao": f"{prova['nome']} - {prova['distancia_km']} km / {prova.get('altimetria_m', 0)} m de altimetria.",
+                "zona": "Competição",
+                "tempo": 0,
+                "fase": "competicao"
+            }]
+
+        # Reduzir intensidade nos dias anteriores
+        for dias_antes in range(1, 4):
+            dia_taper = data_inicio - timedelta(days=dias_antes)
+            key = dia_taper.isoformat()
+            if key in plano:
+                for treino in plano[key]:
+                    treino["tipo"] = "Taper pré-prova"
+                    treino["descricao"] = f"Redução de volume antes da prova ({treino['descricao']})"
+                    treino["zona"] = "Z1-Z2"
+                    treino["fase"] = "taper"
+
+        # Regenerativo após prova
+        dia_pos = data_fim + timedelta(days=1)
+        key = dia_pos.isoformat()
+        if key in plano:
+            plano[key] = [{
+                "modalidade": prova["tipo"],
+                "tipo": "Regenerativo pós-prova",
+                "descricao": "Atividade leve para acelerar recuperação",
+                "zona": "Z1",
+                "tempo": 30,
+                "fase": "transicao"
+            }]
+    return plano
+
 def gerar_semana_treinos(usuario_id):
     perfil = carregar_perfil(usuario_id)
     modalidades = perfil.get("modalidades", ["Ciclismo"])
@@ -128,6 +174,7 @@ def gerar_semana_treinos(usuario_id):
                 treino = gerar_treino_corrida(tipo_treino, tempo_max, fase)
             plano[dia.isoformat()].append(treino)
 
+    plano = ajustar_para_competicoes(plano, usuario_id)
     salvar_treinos_semana(usuario_id, plano)
     return plano
 
