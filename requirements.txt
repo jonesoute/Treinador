@@ -1,1 +1,20 @@
+# Interface web
+streamlit==1.33.0
+
+# Análise e manipulação de dados
+pandas==2.2.2
+numpy==1.26.4
+
+# Comunicação com APIs (Strava)
+requests==2.31.0
+
+# Leitura de variáveis de ambiente (.env)
+python-dotenv==1.0.1
+
+# Geração de gráficos (opcional para dashboard futuro)
+matplotlib==3.8.4
+plotly==5.21.0
+
+# Suporte futuro para arquivos .FIT (caso implemente)
+fitparse==1.2.0
 
