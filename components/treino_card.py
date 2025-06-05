@@ -42,6 +42,10 @@ def exibir_treinos_semana(usuario_id):
         st.info("Nenhum treino foi gerado ainda. Vá para a página inicial e clique em 'Gerar Semana de Treinos'.")
         return
 
+    mensagem = treinos.pop("_mensagem", None)
+    if mensagem:
+        st.info(mensagem)
+
     for data_str in sorted(treinos.keys()):
         dia_data = date.fromisoformat(data_str)
         if dia_data < hoje:
@@ -51,14 +55,27 @@ def exibir_treinos_semana(usuario_id):
         for i, treino in enumerate(treinos[data_str]):
             key = f"{data_str}_{i}"
             with st.container(border=True):
-                st.markdown(f"**Modalidade:** {treino['modalidade']}")
-                st.markdown(f"**Tipo:** {treino['tipo']}")
+                titulo = f"**{treino['modalidade']} – {treino['tipo']}**"
+                if treino.get("fase") == "competicao":
+                    titulo += " 🏁"
+                if treino.get("_editado"):
+                    titulo += " 🔄"
+                st.markdown(titulo)
+
                 st.markdown(f"**Descrição:** {treino['descricao']}")
                 st.markdown(f"**Zonas alvo:** {treino['zona']}")
                 st.markdown(f"**Duração:** {treino['tempo']} min")
                 st.markdown(f"**📆 Fase de treinamento:** `{treino.get('fase', 'desconhecida').capitalize()}`")
 
-                # FEEDBACK
+                # 💡 Nutrição e hidratação
+                if treino.get("tempo", 0) >= 60 and "nutricao" in treino:
+                    nutri = treino["nutricao"]
+                    st.markdown("💡 **Nutrição recomendada:**")
+                    st.markdown(f"- Carboidrato: `{nutri['carbo']}`")
+                    st.markdown(f"- Hidratação: `{nutri['agua']}`")
+                    st.markdown(f"- Sódio: `{nutri['sodio']}`")
+
+                # 🗣️ Feedback pós-treino
                 st.markdown("**🗣️ Como você se sentiu após esse treino?**")
                 sentimento = st.selectbox(
                     "Selecione uma opção:",
@@ -75,7 +92,7 @@ def exibir_treinos_semana(usuario_id):
                     salvar_feedbacks(usuario_id, feedbacks)
                     st.success("✅ Feedback salvo!")
 
-                # EXPORTAÇÃO
+                # 📤 Exportação
                 if treino["modalidade"] == "Ciclismo":
                     if st.button("📤 Exportar como .ZWO", key=f"zwo_{key}"):
                         caminho = exportar_treino_para_zwo(usuario_id, treino)
