@@ -123,60 +123,22 @@ def ajustar_para_competicoes(plano, usuario_id):
             }]
     return plano
 
-def gerar_semana_treinos(usuario_id):
-    perfil = carregar_perfil(usuario_id)
-    modalidades = perfil.get("modalidades", ["Ciclismo"])
-    dias_disponiveis = perfil.get("dias_disponiveis", [])
-    horas_disponiveis = perfil.get("horas_disponiveis", {})
-    ftp = perfil.get("ftp", 200)
+def adicionar_dicas_nutricao(treino, perfil):
+    peso = perfil.get("peso", 70)
+    tempo = treino.get("tempo", 60)  # em minutos
+    intensidade = treino.get("zona", "Z2")
 
-    df = preparar_dataframe_atividades(usuario_id, ftp)
-    cargas = calcular_cargas(df)
-    fase = obter_fase_treinamento(usuario_id)
-    ajuste_feedback, sem_feedback = ajustar_carga_por_feedback(usuario_id)
+    carbo_min = 30
+    carbo_max = 90 if "Z4" in intensidade or "Z5" in intensidade else 60
+    liquido_ml = 500 if tempo < 90 else 750
+    sodio_mg = 500 if tempo >= 90 else 300
 
-    hoje = date.today()
-    plano = {}
-
-    if sem_feedback:
-        plano["_mensagem"] = (
-            "⚠️ Você não registrou nenhum feedback nos últimos 7 dias. "
-            "A intensidade dos treinos será mantida sem ajustes automáticos. "
-            "Responder aos feedbacks permite que o plano se adapte melhor ao seu corpo e evolução."
-        )
-
-    for i in range(7):
-        dia = hoje + timedelta(days=i)
-        nome_dia = dia.strftime("%A")
-        if nome_dia not in dias_disponiveis:
-            continue
-
-        tempo_max = horas_disponiveis.get(nome_dia, 1.0)
-        tipo_treino = "leve" if cargas["TSB"] < -10 else "moderado" if cargas["TSB"] < 10 else "intenso"
-
-        if fase == "base" and tipo_treino == "intenso":
-            tipo_treino = "moderado"
-        elif fase in ["taper", "transicao"]:
-            tipo_treino = "leve"
-
-        if ajuste_feedback == +1 and tipo_treino == "moderado":
-            tipo_treino = "intenso"
-        elif ajuste_feedback == -1 and tipo_treino == "intenso":
-            tipo_treino = "moderado"
-        elif ajuste_feedback == -1 and tipo_treino == "moderado":
-            tipo_treino = "leve"
-
-        plano[dia.isoformat()] = []
-        for modalidade in modalidades:
-            if modalidade == "Ciclismo":
-                treino = gerar_treino_ciclismo(tipo_treino, tempo_max, fase)
-            elif modalidade == "Corrida":
-                treino = gerar_treino_corrida(tipo_treino, tempo_max, fase)
-            plano[dia.isoformat()].append(treino)
-
-    plano = ajustar_para_competicoes(plano, usuario_id)
-    salvar_treinos_semana(usuario_id, plano)
-    return plano
+    treino["nutricao"] = {
+        "carbo": f"{carbo_min}-{carbo_max}g/h",
+        "agua": f"{liquido_ml}ml/h",
+        "sodio": f"~{sodio_mg}mg/l"
+    }
+    return treino
 
 def gerar_treino_ciclismo(intensidade, tempo_horas, fase="base"):
     tempo_min = round(tempo_horas * 60)
@@ -237,3 +199,59 @@ def gerar_treino_corrida(intensidade, tempo_horas, fase="base"):
             "tempo": tempo_min,
             "fase": fase
         }
+
+def gerar_semana_treinos(usuario_id):
+    perfil = carregar_perfil(usuario_id)
+    modalidades = perfil.get("modalidades", ["Ciclismo"])
+    dias_disponiveis = perfil.get("dias_disponiveis", [])
+    horas_disponiveis = perfil.get("horas_disponiveis", {})
+    ftp = perfil.get("ftp", 200)
+
+    df = preparar_dataframe_atividades(usuario_id, ftp)
+    cargas = calcular_cargas(df)
+    fase = obter_fase_treinamento(usuario_id)
+    ajuste_feedback, sem_feedback = ajustar_carga_por_feedback(usuario_id)
+
+    hoje = date.today()
+    plano = {}
+
+    if sem_feedback:
+        plano["_mensagem"] = (
+            "⚠️ Você não registrou nenhum feedback nos últimos 7 dias. "
+            "A intensidade dos treinos será mantida sem ajustes automáticos. "
+            "Responder aos feedbacks permite que o plano se adapte melhor ao seu corpo e evolução."
+        )
+
+    for i in range(7):
+        dia = hoje + timedelta(days=i)
+        nome_dia = dia.strftime("%A")
+        if nome_dia not in dias_disponiveis:
+            continue
+
+        tempo_max = horas_disponiveis.get(nome_dia, 1.0)
+        tipo_treino = "leve" if cargas["TSB"] < -10 else "moderado" if cargas["TSB"] < 10 else "intenso"
+
+        if fase == "base" and tipo_treino == "intenso":
+            tipo_treino = "moderado"
+        elif fase in ["taper", "transicao"]:
+            tipo_treino = "leve"
+
+        if ajuste_feedback == +1 and tipo_treino == "moderado":
+            tipo_treino = "intenso"
+        elif ajuste_feedback == -1 and tipo_treino == "intenso":
+            tipo_treino = "moderado"
+        elif ajuste_feedback == -1 and tipo_treino == "moderado":
+            tipo_treino = "leve"
+
+        plano[dia.isoformat()] = []
+        for modalidade in modalidades:
+            if modalidade == "Ciclismo":
+                treino = gerar_treino_ciclismo(tipo_treino, tempo_max, fase)
+            elif modalidade == "Corrida":
+                treino = gerar_treino_corrida(tipo_treino, tempo_max, fase)
+            treino = adicionar_dicas_nutricao(treino, perfil)
+            plano[dia.isoformat()].append(treino)
+
+    plano = ajustar_para_competicoes(plano, usuario_id)
+    salvar_treinos_semana(usuario_id, plano)
+    return plano
