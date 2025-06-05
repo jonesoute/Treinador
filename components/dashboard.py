@@ -1,52 +1,42 @@
 # components/dashboard.py
 
 import streamlit as st
-import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.express as px
 from utils.analysis import preparar_dataframe_atividades, calcular_cargas
+from utils.logger import registrar_erro
 
-def exibir_dashboard(usuario_id, ftp=200):
-    st.header("📊 Dashboard de Carga de Treinamento")
+def exibir_dashboard(usuario_id, ftp):
+    st.header("📊 Painel de Desempenho e Carga")
 
-    # Seleção de esporte
-    tipo_esporte = st.radio(
-        "Qual modalidade deseja visualizar?",
-        options=["Ciclismo", "Corrida", "Ambos"],
-        horizontal=True
-    )
+    try:
+        df = preparar_dataframe_atividades(usuario_id, ftp)
 
-    # Mapear para o tipo do Strava
-    tipo_strava = None
-    if tipo_esporte == "Ciclismo":
-        tipo_strava = "Ride"
-    elif tipo_esporte == "Corrida":
-        tipo_strava = "Run"
+        if df.empty:
+            st.warning("Nenhuma atividade suficiente encontrada para análise.")
+            return
 
-    # Carregar e filtrar atividades
-    df = preparar_dataframe_atividades(usuario_id, ftp, tipo=tipo_strava)
+        # Cálculo de métricas de carga
+        cargas = calcular_cargas(df)
+        st.subheader("📈 Cargas de Treinamento (Últimos 90 dias)")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("ATL (7d)", cargas["ATL"])
+        col2.metric("CTL (42d)", cargas["CTL"])
+        col3.metric("TSB", cargas["TSB"], help="CTL - ATL. Reflete fadiga e recuperação.")
 
-    if df.empty:
-        st.warning("Nenhuma atividade foi encontrada para essa modalidade.")
-        return
+        # Gráfico TSS por dia
+        st.subheader("📅 TSS Diário")
+        fig = px.bar(df, x="data", y="tss", color="tipo", title="TSS por atividade",
+                     labels={"data": "Data", "tss": "TSS", "tipo": "Modalidade"})
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Cálculo de cargas
-    cargas = calcular_cargas(df)
+        # Gráfico de linha de cargas
+        st.subheader("📉 Evolução ATL x CTL")
+        df_carga = df.set_index("data")
+        fig2 = px.line(df_carga, y=["ATL", "CTL"], title="Carga de Treinamento",
+                       labels={"value": "Carga", "variable": "Métrica"})
+        st.plotly_chart(fig2, use_container_width=True)
 
-    st.subheader("📌 Indicadores de Carga")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Carga Aguda (ATL)", f"{cargas['ATL']} TSS")
-    col2.metric("Carga Crônica (CTL)", f"{cargas['CTL']} TSS")
-    col3.metric("Forma (TSB)", f"{cargas['TSB']}")
-
-    # Gráfico de TSS diário
-    st.subheader("📈 TSS Diário (últimos 42 dias)")
-    df_plot = df[df["data"] >= df["data"].max() - pd.Timedelta(days=41)]
-
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.bar(df_plot["data"], df_plot["tss"], color="#1f77b4")
-    ax.set_ylabel("TSS")
-    ax.set_xlabel("Data")
-    ax.set_title(f"TSS por Dia – {tipo_esporte}")
-    ax.grid(True, linestyle="--", alpha=0.5)
-    fig.autofmt_xdate()
-
-    st.pyplot(fig)
+    except Exception as e:
+        registrar_erro(f"Erro ao exibir dashboard para '{usuario_id}': {e}")
+        st.error("❌ Erro ao gerar o painel. Verifique os dados ou tente novamente.")
