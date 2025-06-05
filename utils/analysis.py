@@ -2,88 +2,81 @@
 
 import os
 import json
-from datetime import datetime, timedelta
-import math
 import pandas as pd
+from datetime import datetime
+from utils.logger import registrar_erro
 
 def carregar_atividades(usuario_id):
-    caminho = os.path.join("data", "usuarios", usuario_id, "atividades.json")
-    if not os.path.exists(caminho):
+    try:
+        caminho = os.path.join("data", "usuarios", usuario_id, "atividades.json")
+        if os.path.exists(caminho):
+            with open(caminho, "r", encoding="utf-8") as f:
+                return json.load(f)
         return []
-    with open(caminho, "r", encoding="utf-8") as f:
-        return json.load(f)
+    except Exception as e:
+        registrar_erro(f"Erro ao carregar atividades do usuário '{usuario_id}' para análise: {e}")
+        return []
 
-def calcular_tss(atividade, ftp=200, esporte="Ride"):
-    """Calcula ou estima o TSS de uma atividade com base no tipo de esporte."""
-    duracao_seg = atividade.get("moving_time", 0)
-    duracao_horas = duracao_seg / 3600
-    intensidade = 0.6  # valor base
+def preparar_dataframe_atividades(usuario_id, ftp):
+    try:
+        atividades = carregar_atividades(usuario_id)
+        dados = []
+        for a in atividades:
+            if a.get("type") not in ["Ride", "Run"]:
+                continue
 
-    if esporte == "Ride":
-        media_potencia = atividade.get("average_watts")
-        if media_potencia and ftp:
-            intensidade = media_potencia / ftp
-        elif atividade.get("average_heartrate"):
-            fc = atividade["average_heartrate"]
-            intensidade = 0.5 + (fc - 120) / 100
+            distancia_km = a["distance"] / 1000 if "distance" in a else 0
+            tempo_min = a["moving_time"] / 60 if "moving_time" in a else 0
+            potencia = a.get("average_watts", None)
+            hr = a.get("average_heartrate", None)
+            data = a.get("start_date_local", "")[:10]
 
-    elif esporte == "Run":
-        pace = atividade.get("average_speed", 0)  # em m/s
-        if pace:
-            ritmo_kmph = pace * 3.6
-            intensidade = 0.65 + (ritmo_kmph - 9) / 20  # baseado em ritmo acima de ~5:30/km
-        if atividade.get("average_heartrate"):
-            fc = atividade["average_heartrate"]
-            intensidade += (fc - 130) / 150
+            if not data or tempo_min == 0:
+                continue
 
-    intensidade = max(0.4, min(intensidade, 1.6))  # controle de limites
+            tss = 0
+            if potencia and ftp:
+                int_rel = potencia / ftp
+                tss = int((tempo_min * int_rel**2) / 60 * 100)
+            elif hr:
+                zonas = [(100, 1.0), (90, 0.9), (80, 0.8), (70, 0.7)]
+                for limite, fator in zonas:
+                    if hr >= limite:
+                        tss = int(tempo_min * fator)
+                        break
 
-    tss = duracao_horas * (intensidade ** 2) * 100
-    return round(tss, 1)
+            dados.append({
+                "data": data,
+                "tipo": a["type"],
+                "nome": a.get("name", ""),
+                "distancia_km": round(distancia_km, 1),
+                "tempo_min": round(tempo_min),
+                "tss": tss
+            })
 
-def preparar_dataframe_atividades(usuario_id, ftp=200, tipo=None):
-    atividades = carregar_atividades(usuario_id)
-    dados = []
+        return pd.DataFrame(dados)
 
-    for a in atividades:
-        tipo_atividade = a.get("type", "Ride")
-        if tipo and tipo_atividade != tipo:
-            continue
+    except Exception as e:
+        registrar_erro(f"Erro ao preparar dataframe de atividades de '{usuario_id}': {e}")
+        return pd.DataFrame()
 
-        if not a.get("start_date_local"):
-            continue
+def calcular_cargas(df):
+    try:
+        df["data"] = pd.to_datetime(df["data"])
+        df = df.sort_values("data")
+        df = df.set_index("data")
 
-        data = datetime.fromisoformat(a["start_date_local"].replace("Z", ""))
-        tss = calcular_tss(a, ftp, tipo_atividade)
-        dados.append({
-            "data": data.date(),
-            "nome": a.get("name"),
-            "duracao_min": round(a.get("moving_time", 0) / 60),
-            "tss": tss,
-            "tipo": tipo_atividade
-        })
+        df["TSS"] = df["tss"]
+        df["ATL"] = df["TSS"].rolling(window=7).mean().fillna(0)
+        df["CTL"] = df["TSS"].rolling(window=42).mean().fillna(0)
+        df["TSB"] = df["CTL"] - df["ATL"]
 
-    df = pd.DataFrame(dados)
-    df = df.sort_values("data")
-    return df
-
-def calcular_cargas(df, data_final=None):
-    """Calcula ATL, CTL e TSB com base nos TSS das atividades filtradas."""
-    if df.empty:
+        ultimos = df.tail(1).to_dict(orient="records")[0]
+        return {
+            "ATL": round(ultimos.get("ATL", 0)),
+            "CTL": round(ultimos.get("CTL", 0)),
+            "TSB": round(ultimos.get("TSB", 0))
+        }
+    except Exception as e:
+        registrar_erro(f"Erro ao calcular cargas de treino: {e}")
         return {"ATL": 0, "CTL": 0, "TSB": 0}
-
-    if data_final is None:
-        data_final = df["data"].max()
-
-    data_final = pd.to_datetime(data_final)
-    df["data"] = pd.to_datetime(df["data"])
-
-    atl = df[(df["data"] >= data_final - timedelta(days=6))]["tss"].mean()
-    ctl = df[(df["data"] >= data_final - timedelta(days=41))]["tss"].mean()
-    tsb = ctl - atl
-
-    return {
-        "ATL": round(atl if not math.isnan(atl) else 0, 1),
-        "CTL": round(ctl if not math.isnan(ctl) else 0, 1),
-        "TSB": round(tsb if not math.isnan(tsb) else 0, 1),
-    }
