@@ -1,1 +1,41 @@
+# Compilados Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Dados do app
+data/
+*.json
+*.csv
+*.tcx
+*.zwo
+*.fit
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+*.bak
+
+# Configs locais / chaves secretas
+.env
+secrets/
+*.pem
+*.key
+
+# Diretórios do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos do Streamlit
+.streamlit/config.toml
+.streamlit/credentials.toml
+
+# Exportações temporárias
+exportados/
+*.tcx
+*.zwo
+
+# Pasta de cache do VSCode / PyCharm
+.vscode/
+.idea/
 
