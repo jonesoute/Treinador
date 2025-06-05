@@ -1,6 +1,8 @@
 # app.py
 
 import streamlit as st
+import os
+from datetime import date
 from utils.perfil import carregar_perfil, salvar_perfil, perfil_existe
 from utils.strava_api import (
     token_existe,
@@ -9,26 +11,29 @@ from utils.strava_api import (
     coletar_e_salvar_atividades,
     carregar_atividades
 )
+from utils.treino_generator import gerar_semana_treinos
 from components.perfil_form import exibir_formulario_perfil
+from components.dashboard import exibir_dashboard
+from components.treino_card import exibir_treinos_semana
+from components.calendar import exibir_calendario_provas
+from components.treino_editor import treino_editor
 
-# CONFIG
+# CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Treinador Virtual de Ciclismo e Corrida", layout="wide")
-st.title("🏁 Treinador Virtual de Ciclismo e Corrida")
 
 # IDENTIFICAÇÃO DO USUÁRIO
 st.sidebar.header("👤 Identificação do Atleta")
 usuario_id = st.sidebar.text_input("Digite seu nome de usuário", max_chars=30)
-
 if not usuario_id:
     st.warning("Digite seu nome de usuário para continuar.")
     st.stop()
-
+os.makedirs(f"data/usuarios/{usuario_id}", exist_ok=True)
 st.success(f"Usuário ativo: {usuario_id}")
 
-# PERFIL
+# PERFIL DO USUÁRIO
 if not perfil_existe(usuario_id):
     st.info("Vamos configurar seu perfil.")
-    perfil = exibir_formulario_perfil()
+    perfil = exibir_formulario_perfil(usuario_id)
     if perfil:
         salvar_perfil(usuario_id, perfil)
         st.success("✅ Perfil salvo com sucesso! Recarregue a página para continuar.")
@@ -36,7 +41,7 @@ if not perfil_existe(usuario_id):
 else:
     perfil = carregar_perfil(usuario_id)
 
-# STRAVA
+# AUTENTICAÇÃO STRAVA
 st.sidebar.subheader("🔗 Conexão com Strava")
 if not token_existe(usuario_id):
     st.sidebar.markdown("Conecte sua conta Strava para importar seus treinos:")
@@ -44,7 +49,6 @@ if not token_existe(usuario_id):
     st.sidebar.markdown(f"[🔗 Autorizar acesso ao Strava]({link})")
 
     code = st.sidebar.text_input("Após autorizar, cole o código aqui:")
-
     if code:
         try:
             autenticar_usuario(usuario_id, code)
@@ -66,19 +70,19 @@ if "Ciclismo" in modalidades or "Corrida" in modalidades:
         "📅 Atividades",
         "📆 Calendário",
         "📊 Dashboard",
-        "🧠 Treinos da Semana"
+        "🧠 Treinos da Semana",
+        "✏️ Editar Treinos"
     ])
 paginas.append("⚙️ Perfil")
 
 pagina = st.sidebar.radio("Acesse uma seção:", paginas)
 
-# ===== TELAS =====
+# ROTAS DAS PÁGINAS
 if pagina == "🏠 Início":
     st.header(f"Bem-vindo, {perfil['nome']} 👋")
     st.markdown("Use o menu lateral para navegar entre as funcionalidades do treinador virtual.")
 
     col1, col2 = st.columns(2)
-
     with col1:
         st.subheader("📡 Importar treinos do Strava")
         if st.button("🔄 Atualizar treinos"):
@@ -88,7 +92,6 @@ if pagina == "🏠 Início":
     with col2:
         st.subheader("📅 Gerar semana de treinos")
         if st.button("🧠 Gerar Treinos da Semana"):
-            from utils.treino_generator import gerar_semana_treinos
             treinos = gerar_semana_treinos(usuario_id)
             st.success("✅ Plano semanal gerado com sucesso!")
 
@@ -107,16 +110,16 @@ elif pagina == "📅 Atividades":
             )
 
 elif pagina == "📆 Calendário":
-    from components.calendar import exibir_calendario_provas
     exibir_calendario_provas(usuario_id)
 
 elif pagina == "📊 Dashboard":
-    from components.dashboard import exibir_dashboard
     exibir_dashboard(usuario_id, perfil.get("ftp", 200))
 
 elif pagina == "🧠 Treinos da Semana":
-    from components.treino_card import exibir_treinos_semana
     exibir_treinos_semana(usuario_id)
+
+elif pagina == "✏️ Editar Treinos":
+    treino_editor(usuario_id)
 
 elif pagina == "⚙️ Perfil":
     st.header("⚙️ Informações do Perfil")
