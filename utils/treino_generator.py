@@ -170,7 +170,13 @@ def gerar_semana_treinos(usuario_id):
         ftp = perfil.get("ftp", 200)
 
         df = preparar_dataframe_atividades(usuario_id, ftp)
-        cargas = calcular_cargas(df)
+        sem_atividades = df.empty
+
+        if sem_atividades:
+            cargas = {"ATL": 0, "CTL": 0, "TSB": 10}  # assume bem descansado
+        else:
+            cargas = calcular_cargas(df)
+
         fase = obter_fase_treinamento(usuario_id)
         ajuste_feedback, sem_feedback = ajustar_carga_por_feedback(usuario_id)
 
@@ -182,6 +188,12 @@ def gerar_semana_treinos(usuario_id):
                 "⚠️ Você não registrou nenhum feedback nos últimos 7 dias. "
                 "A intensidade dos treinos será mantida sem ajustes automáticos. "
                 "Responder aos feedbacks permite que o plano se adapte melhor ao seu corpo e evolução."
+            )
+
+        if sem_atividades:
+            plano["_mensagem"] = (
+                "ℹ️ Você ainda não possui treinos registrados no sistema. "
+                "Foi gerado um plano de transição leve com base no seu perfil."
             )
 
         for i in range(7):
@@ -205,6 +217,9 @@ def gerar_semana_treinos(usuario_id):
             elif ajuste_feedback == -1 and tipo_treino == "moderado":
                 tipo_treino = "leve"
 
+            if sem_atividades:
+                tipo_treino = "leve"
+
             plano[dia.isoformat()] = []
             for modalidade in modalidades:
                 if modalidade == "Ciclismo":
@@ -221,5 +236,3 @@ def gerar_semana_treinos(usuario_id):
     except Exception as e:
         registrar_erro(f"Erro ao gerar plano semanal para '{usuario_id}': {e}")
         return {}
-
-# Funções de geração de treino ciclismo/corrida permanecem inalteradas
