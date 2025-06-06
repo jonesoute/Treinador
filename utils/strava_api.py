@@ -9,106 +9,115 @@ from utils.logger import registrar_erro
 
 CLIENT_ID = st.secrets["STRAVA_CLIENT_ID"]
 CLIENT_SECRET = st.secrets["STRAVA_CLIENT_SECRET"]
-REDIRECT_URI = "https://treinadorvirtualapp.streamlit.app"
+REDIRECT_URI = "https://nome-do-app.streamlit.app"  # Substitua pelo endereço real do seu app
 
 def caminho_token(usuario_id):
     return os.path.join("data", "usuarios", usuario_id, "token.json")
 
-def caminho_atividades(usuario_id):
-    return os.path.join("data", "usuarios", usuario_id, "atividades.json")
-
 def token_existe(usuario_id):
     return os.path.exists(caminho_token(usuario_id))
 
+def salvar_token(usuario_id, token_info):
+    try:
+        caminho = caminho_token(usuario_id)
+        os.makedirs(os.path.dirname(caminho), exist_ok=True)
+        with open(caminho, "w", encoding="utf-8") as f:
+            json.dump(token_info, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        registrar_erro(f"Erro ao salvar token Strava: {e}")
+
+def carregar_token(usuario_id):
+    try:
+        with open(caminho_token(usuario_id), "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        registrar_erro(f"Erro ao carregar token Strava: {e}")
+        return None
+
 def gerar_link_autenticacao():
     return (
-        f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}"
-        f"&response_type=code&redirect_uri={REDIRECT_URI}"
-        f"&approval_prompt=force&scope=read,activity:read"
+        f"https://www.strava.com/oauth/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&response_type=code"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&approval_prompt=auto"
+        f"&scope=read,activity:read_all"
     )
 
-def autenticar_usuario(usuario_id, code):
+def autenticar_usuario(usuario_id):
+    query_params = st.query_params
+    if "code" not in query_params:
+        return False
+
+    code = query_params["code"]
+
     try:
-        url = "https://www.strava.com/oauth/token"
-        payload = {
+        response = requests.post("https://www.strava.com/oauth/token", data={
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
             "code": code,
             "grant_type": "authorization_code"
-        }
-        response = requests.post(url, data=payload)
-        response.raise_for_status()
-        token_data = response.json()
+        })
 
-        os.makedirs(os.path.dirname(caminho_token(usuario_id)), exist_ok=True)
-        with open(caminho_token(usuario_id), "w", encoding="utf-8") as f:
-            json.dump(token_data, f)
+        if response.status_code == 200:
+            token_info = response.json()
+            salvar_token(usuario_id, token_info)
+            return True
+        else:
+            registrar_erro(f"Erro ao autenticar: {response.text}")
+            return False
 
     except Exception as e:
-        registrar_erro(f"Erro ao autenticar usuário '{usuario_id}' com Strava: {e}")
-        raise
+        registrar_erro(f"Exceção na autenticação: {e}")
+        return False
 
-def atualizar_token(usuario_id):
+def coletar_e_salvar_atividades(usuario_id, dias=90):
     try:
-        with open(caminho_token(usuario_id), "r", encoding="utf-8") as f:
-            token_data = json.load(f)
+        token = carregar_token(usuario_id)
+        if not token:
+            return []
 
-        expires_at = token_data.get("expires_at", 0)
-        if datetime.utcnow().timestamp() < expires_at:
-            return token_data
+        # Refresh token se necessário
+        if datetime.utcfromtimestamp(token["expires_at"]) < datetime.utcnow():
+            response = requests.post("https://www.strava.com/oauth/token", data={
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "grant_type": "refresh_token",
+                "refresh_token": token["refresh_token"]
+            })
 
-        payload = {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "grant_type": "refresh_token",
-            "refresh_token": token_data["refresh_token"]
-        }
+            if response.status_code == 200:
+                token = response.json()
+                salvar_token(usuario_id, token)
+            else:
+                registrar_erro("Erro ao renovar token Strava.")
+                return []
 
-        response = requests.post("https://www.strava.com/oauth/token", data=payload)
-        response.raise_for_status()
-        token_data = response.json()
+        headers = {"Authorization": f"Bearer {token['access_token']}"}
+        after_timestamp = int((datetime.utcnow() - timedelta(days=dias)).timestamp())
+        response = requests.get(
+            f"https://www.strava.com/api/v3/athlete/activities?after={after_timestamp}&per_page=100",
+            headers=headers
+        )
 
-        with open(caminho_token(usuario_id), "w", encoding="utf-8") as f:
-            json.dump(token_data, f)
-
-        return token_data
-
-    except Exception as e:
-        registrar_erro(f"Erro ao atualizar token do usuário '{usuario_id}': {e}")
-        return None
-
-def coletar_e_salvar_atividades(usuario_id):
-    try:
-        token_data = atualizar_token(usuario_id)
-        if not token_data:
-            raise Exception("Token inválido ou não encontrado.")
-
-        headers = {"Authorization": f"Bearer {token_data['access_token']}"}
-        url = "https://www.strava.com/api/v3/athlete/activities"
-        params = {"per_page": 200, "page": 1, "after": (datetime.now() - timedelta(days=90)).timestamp()}
-
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        atividades = response.json()
-
-        caminho = caminho_atividades(usuario_id)
-        os.makedirs(os.path.dirname(caminho), exist_ok=True)
-        with open(caminho, "w", encoding="utf-8") as f:
-            json.dump(atividades, f, ensure_ascii=False, indent=4)
-
-        return atividades
+        if response.status_code == 200:
+            atividades = response.json()
+            caminho = os.path.join("data", "usuarios", usuario_id, "atividades.json")
+            os.makedirs(os.path.dirname(caminho), exist_ok=True)
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump(atividades, f, ensure_ascii=False, indent=4)
+            return atividades
+        else:
+            registrar_erro(f"Erro ao coletar atividades: {response.text}")
+            return []
 
     except Exception as e:
-        registrar_erro(f"Erro ao coletar atividades do Strava para '{usuario_id}': {e}")
+        registrar_erro(f"Erro ao coletar atividades: {e}")
         return []
 
 def carregar_atividades(usuario_id):
-    try:
-        caminho = caminho_atividades(usuario_id)
-        if os.path.exists(caminho):
-            with open(caminho, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return []
-    except Exception as e:
-        registrar_erro(f"Erro ao carregar atividades de '{usuario_id}': {e}")
-        return []
+    caminho = os.path.join("data", "usuarios", usuario_id, "atividades.json")
+    if os.path.exists(caminho):
+        with open(caminho, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
