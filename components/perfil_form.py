@@ -1,69 +1,40 @@
 # components/perfil_form.py
 
 import streamlit as st
-from datetime import datetime
+from datetime import date
 
-def exibir_formulario_perfil():
-    st.title("🏁 Configuração Inicial - Perfil do Atleta")
-    st.markdown("Preencha os dados abaixo para personalizar seu plano de treinamento:")
+def exibir_formulario_perfil(usuario_id):
+    st.subheader("📋 Preencha seu perfil de atleta")
 
-    with st.form("form_perfil"):
-        nome = st.text_input("Nome completo")
-        idade = st.number_input("Idade", min_value=10, max_value=100, step=1)
-        sexo = st.selectbox("Sexo", ["Masculino", "Feminino"])
-        peso = st.number_input("Peso (kg)", min_value=30.0, max_value=200.0, step=0.1)
-        altura = st.number_input("Altura (cm)", min_value=130, max_value=230, step=1)
-        ftp = st.number_input("FTP (opcional - em watts)", min_value=50, max_value=600, step=1)
+    nome = st.text_input("Nome completo")
+    sexo = st.radio("Sexo", ["Masculino", "Feminino"])
+    idade = st.number_input("Idade", min_value=10, max_value=90, value=30)
+    peso = st.number_input("Peso (kg)", min_value=30.0, max_value=150.0, value=70.0)
+    altura = st.number_input("Altura (cm)", min_value=130, max_value=220, value=175)
+    ftp = st.number_input("FTP estimado (opcional)", min_value=100, max_value=500, value=200)
 
-        fc_repouso = st.number_input("Frequência Cardíaca em Repouso (opcional)", min_value=30, max_value=100, step=1)
-        fc_maxima = st.number_input("Frequência Cardíaca Máxima (opcional)", min_value=100, max_value=220, step=1)
+    modalidades = st.multiselect("Modalidades praticadas", ["Ciclismo", "Corrida"], default=["Ciclismo"])
+    preferencia = st.radio("Preferência de treino", ["Frequência Cardíaca", "Potência"])
 
-        experiencia = st.selectbox("Experiência com ciclismo/corrida", ["Iniciante", "Intermediário", "Avançado"])
-        objetivo = st.text_input("Objetivo principal (ex: ganhar resistência, competir...)")
+    st.markdown("### 🗓️ Disponibilidade semanal")
+    dias = st.multiselect("Quais dias você pode treinar?", ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"])
+    horas = {}
+    for dia in dias:
+        horas[dia] = st.slider(f"⏱️ Tempo disponível na {dia}", 0.5, 6.0, 1.0, step=0.5)
 
-        referencia_treino = st.radio("Preferência de prescrição de treino", ["Potência", "Frequência Cardíaca"])
-
-        st.markdown("### 🏃🚴 Modalidades praticadas")
-        modalidades = st.multiselect(
-            "Escolha os esportes que deseja treinar com a IA:",
-            options=["Ciclismo", "Corrida"],
-            default=["Ciclismo"]
-        )
-
-        st.markdown("### 🗓️ Dias disponíveis e tempo máximo por dia")
-        dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
-        dias_disponiveis = st.multiselect("Selecione os dias que pode treinar:", dias_semana)
-
-        horas_disponiveis = {}
-        for dia in dias_disponiveis:
-            horas_disponiveis[dia] = st.slider(f"{dia} - horas disponíveis", 0.5, 6.0, 1.0, 0.5)
-
-        st.markdown("### ⚙️ Preferências adicionais (opcional)")
-        historico_lesoes = st.text_area("Histórico de lesões (se houver)")
-        preferencia_treino = st.text_input("Preferência de tipo de treino (intervalado, longos, indoor, etc.)")
-
-        enviado = st.form_submit_button("Salvar Perfil")
-
-    if enviado:
-        perfil = {
+    if st.button("💾 Salvar Perfil"):
+        return {
             "nome": nome,
-            "idade": idade,
             "sexo": sexo,
+            "idade": idade,
             "peso": peso,
             "altura": altura,
             "ftp": ftp,
-            "fc_repouso": fc_repouso,
-            "fc_maxima": fc_maxima,
-            "experiencia": experiencia,
-            "objetivo": objetivo,
-            "referencia_treino": referencia_treino,
             "modalidades": modalidades,
-            "dias_disponiveis": dias_disponiveis,
-            "horas_disponiveis": horas_disponiveis,
-            "historico_lesoes": historico_lesoes,
-            "preferencia_treino": preferencia_treino,
-            "data_criacao": datetime.today().strftime("%Y-%m-%d")
+            "preferencia_treino": preferencia,
+            "dias_disponiveis": dias,
+            "horas_disponiveis": horas,
+            "data_criacao": date.today().isoformat()
         }
-        return perfil
 
     return None
