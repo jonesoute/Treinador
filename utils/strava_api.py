@@ -9,7 +9,7 @@ from utils.logger import registrar_erro
 
 CLIENT_ID = st.secrets["STRAVA_CLIENT_ID"]
 CLIENT_SECRET = st.secrets["STRAVA_CLIENT_SECRET"]
-REDIRECT_URI = "https://nome-do-app.streamlit.app"
+REDIRECT_URI = "https://treinadorvirtualapp.streamlit.app"
 
 def caminho_token(usuario_id):
     return os.path.join("data", "usuarios", usuario_id, "token.json")
