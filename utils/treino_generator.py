@@ -184,7 +184,7 @@ def gerar_semana_treinos(usuario_id):
         sem_atividades = df.empty
 
         if sem_atividades:
-            cargas = {"ATL": 0, "CTL": 0, "TSB": 10}  # assume bem descansado
+            cargas = {"ATL": 0, "CTL": 0, "TSB": 10}
         else:
             cargas = calcular_cargas(df)
 
@@ -247,3 +247,25 @@ def gerar_semana_treinos(usuario_id):
     except Exception as e:
         registrar_erro(f"Erro ao gerar plano semanal para '{usuario_id}': {e}")
         return {}
+
+# === Funções básicas para gerar treinos ===
+
+def gerar_treino_ciclismo(tipo, tempo_max, fase):
+    return {
+        "modalidade": "Ciclismo",
+        "tipo": tipo.capitalize(),
+        "descricao": f"Treino de ciclismo {tipo} para fase {fase}",
+        "zona": "Z2-Z4",
+        "tempo": int(tempo_max * 60),
+        "fase": fase
+    }
+
+def gerar_treino_corrida(tipo, tempo_max, fase):
+    return {
+        "modalidade": "Corrida",
+        "tipo": tipo.capitalize(),
+        "descricao": f"Corrida {tipo} para fase {fase}",
+        "zona": "Z2-Z4",
+        "tempo": int(tempo_max * 60),
+        "fase": fase
+    }
