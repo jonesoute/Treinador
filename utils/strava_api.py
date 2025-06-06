@@ -3,11 +3,12 @@
 import os
 import json
 import requests
+import streamlit as st
 from datetime import datetime, timedelta
 from utils.logger import registrar_erro
 
-CLIENT_ID = "162780"
-CLIENT_SECRET = os.getenv("ced7a10bee89be4b576a815571f64c01f65dd85f", "SUA_CHAVE_AQUI")  # Substituir por segredo real ou variável .env
+CLIENT_ID = st.secrets["STRAVA_CLIENT_ID"]
+CLIENT_SECRET = st.secrets["STRAVA_CLIENT_SECRET"]
 REDIRECT_URI = "http://localhost:8501"
 
 def caminho_token(usuario_id):
