@@ -48,16 +48,14 @@ if not token_existe(usuario_id):
     link = gerar_link_autenticacao()
     st.sidebar.markdown(f"[🔗 Autorizar acesso ao Strava]({link})")
 
-    if code:
-        try:
+    try:
         autenticado = autenticar_usuario(usuario_id)
         if autenticado:
             st.success("✅ Strava conectado com sucesso!")
             st.experimental_rerun()
-
-        except Exception as e:
-            st.error(f"Erro ao autenticar: {e}")
-            st.stop()
+    except Exception as e:
+        st.error(f"Erro ao autenticar: {e}")
+        st.stop()
 else:
     st.sidebar.success("Strava conectado ✅")
 
