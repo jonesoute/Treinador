@@ -8,6 +8,17 @@ from components.calendar import carregar_provas
 from utils.perfil import carregar_perfil
 from utils.logger import registrar_erro
 
+# ✅ MAPEAMENTO DOS DIAS DA SEMANA (em português)
+DIAS_SEMANA_PT = {
+    0: "segunda-feira",
+    1: "terça-feira",
+    2: "quarta-feira",
+    3: "quinta-feira",
+    4: "sexta-feira",
+    5: "sábado",
+    6: "domingo"
+}
+
 def salvar_treinos_semana(usuario_id, treinos):
     try:
         caminho = os.path.join("data", "usuarios", usuario_id, "treinos_semana.json")
@@ -198,7 +209,7 @@ def gerar_semana_treinos(usuario_id):
 
         for i in range(7):
             dia = hoje + timedelta(days=i)
-            nome_dia = dia.strftime("%A")
+            nome_dia = DIAS_SEMANA_PT[dia.weekday()]
             if nome_dia not in dias_disponiveis:
                 continue
 
