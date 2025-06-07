@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 SUPABASE_URL = "https://jdzbdgejsnkmzcvfpxym.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkemJkZ2Vqc25rbXpjdmZweHltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMDEzOTYsImV4cCI6MjA2NDg3NzM5Nn0.ftE3LXY_LeEeP6WnDSLPjc8oTM7s-9B-q683sZTe54w"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
