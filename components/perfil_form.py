@@ -24,29 +24,27 @@ def exibir_formulario_perfil(usuario_id):
 
         enviar = st.form_submit_button("Salvar Perfil")
 
-    if enviar:
-        perfil = {
-            "nome": nome,
-            "idade": idade,
-            "sexo": sexo,
-            "peso": peso,
-            "altura": altura,
-            "ftp": ftp,
-            "modalidades": modalidades,
-            "preferencia": preferencia,
-            "dias_disponiveis": dias_disponiveis,
-            "horas_disponiveis": horas_disponiveis,
-            "data_criacao": date.today().isoformat()
-        }
+        if enviar:
+            perfil = {
+                "nome": nome,
+                "idade": idade,
+                "sexo": sexo,
+                "peso": peso,
+                "altura": altura,
+                "ftp": ftp,
+                "modalidades": modalidades,
+                "preferencia": preferencia,
+                "dias_disponiveis": dias_disponiveis,
+                "horas_disponiveis": horas_disponiveis,
+                "data_criacao": date.today().isoformat()
+            }
 
-        # Salvar no session_state também (temporário para cloud)
-        st.session_state["perfil_temp"] = perfil
+            # Armazenar temporariamente na sessão
+            st.session_state["perfil_temp"] = perfil
+            st.success("✅ Perfil salvo com sucesso!")
 
-        st.success("✅ Perfil salvo com sucesso!")
+            # Mostra botão para recarregar app
+            if st.button("✅ OK"):
+                st.experimental_rerun()
 
-        if st.button("✅ OK"):
-            st.experimental_rerun()
-
-        return perfil
-
-    return None
+            return perfil  # <- Só retorna após o botão "OK"
