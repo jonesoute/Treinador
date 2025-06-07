@@ -6,7 +6,7 @@ from components.perfil_form import exibir_formulario_perfil
 from components.dashboard import exibir_dashboard
 from components.calendar import exibir_calendario_provas
 from components.treino_card import exibir_treinos_semana
-from components.strava_api import conectar_strava_api
+from utils.strava_api import conectar_strava_api
 from utils.perfil import perfil_existe, carregar_perfil
 
 # CONFIGURAÇÃO DA PÁGINA
