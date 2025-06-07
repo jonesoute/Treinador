@@ -53,6 +53,6 @@ def exibir_formulario_perfil(usuario_id):
         salvar_perfil(perfil)
 
         st.success("✅ Perfil salvo com sucesso!")
-        st.button("🔄 OK para atualizar", on_click=st.experimental_rerun)
+        st.button("🔄 OK para atualizar", on_click=st.rerun)
 
         return perfil
