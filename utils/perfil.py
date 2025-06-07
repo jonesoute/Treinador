@@ -1,10 +1,6 @@
 # utils/perfil.py
 
-from utils.db_supabase import (
-    carregar_perfil_supabase,
-    salvar_perfil_supabase,
-    perfil_existe_supabase,
-)
+from utils.perfil import salvar_perfil, carregar_perfil
 from utils.logger import registrar_erro
 
 # 🔒 Verifica se perfil existe na Supabase
