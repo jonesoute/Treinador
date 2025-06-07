@@ -3,6 +3,7 @@
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
+from utils.logger import registrar_erro
 
 load_dotenv()
 
@@ -26,7 +27,7 @@ def salvar_perfil(usuario_id: str, perfil: dict) -> bool:
     try:
         perfil_completo = {"id": usuario_id, **perfil}
         resposta = supabase.table("usuarios").insert(perfil_completo).execute()
-        return resposta.status_code == 201
+        return bool(resposta.data)
     except Exception as e:
         registrar_erro(f"Erro ao salvar perfil '{usuario_id}': {e}")
         return False
@@ -45,7 +46,7 @@ def carregar_perfil(usuario_id: str) -> dict:
 def atualizar_perfil(usuario_id: str, novos_dados: dict) -> bool:
     try:
         resposta = supabase.table("usuarios").update(novos_dados).eq("id", usuario_id).execute()
-        return resposta.status_code == 200
+        return bool(resposta.data)
     except Exception as e:
         registrar_erro(f"Erro ao atualizar perfil '{usuario_id}': {e}")
         return False
