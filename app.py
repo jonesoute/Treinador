@@ -6,7 +6,7 @@ from components.perfil_form import exibir_formulario_perfil
 from components.dashboard import exibir_dashboard
 from components.calendar import exibir_calendario_provas
 from components.treino_card import exibir_treinos_semana
-from components.strava import conectar_strava
+from components.strava_api import conectar_strava_api
 from utils.perfil import perfil_existe, carregar_perfil
 
 # CONFIGURAÇÃO DA PÁGINA
@@ -56,7 +56,7 @@ pagina = st.sidebar.radio("Menu", paginas)
 # ===== TELAS =====
 if pagina == "🏠 Início":
     st.header(f"Bem-vindo, {perfil.get('nome')} 👋")
-    conectar_strava(usuario_id)
+    conectar_strava_api(usuario_id)
 
 elif pagina == "📊 Dashboard":
     exibir_dashboard(usuario_id, perfil.get("ftp", 200))
