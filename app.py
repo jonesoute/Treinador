@@ -18,7 +18,19 @@ st.title("🚴🏃 Treinador Virtual de Ciclismo e Corrida")
 
 # LOGIN
 usuario_id = exibir_login()
-if not usuario_id:
+if not usuario_id and not st.session_state.get("primeiro_acesso"):
+    st.stop()
+
+# Se for primeiro acesso, mostra o formulário de perfil
+if st.session_state.get("primeiro_acesso"):
+    novo_perfil = exibir_formulario_perfil()
+    if novo_perfil:
+        from utils.perfil import salvar_perfil
+        salvar_perfil(novo_perfil["id"], novo_perfil)
+        st.success("✅ Perfil salvo com sucesso!")
+        del st.session_state["primeiro_acesso"]
+        st.session_state["usuario_id"] = novo_perfil["id"]
+        st.rerun()
     st.stop()
 
 # VERIFICAR SE PERFIL EXISTE
