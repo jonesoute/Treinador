@@ -40,7 +40,7 @@ if not perfil_existe(usuario_id):
     if perfil:
         salvar_perfil(usuario_id, perfil)
         st.success("✅ Perfil salvo com sucesso!")
-        st.experimental_rerun()
+        st.rerun()
     st.stop()
 else:
     perfil = carregar_perfil(usuario_id)
@@ -74,7 +74,7 @@ if pagina == "🏠 Início":
                 autenticado = autenticar_usuario(usuario_id, code)
                 if autenticado:
                     st.success("✅ Conectado ao Strava com sucesso!")
-                    st.experimental_rerun()
+                    st.rerun()
             except Exception as e:
                 st.error(f"Erro ao autenticar com o Strava: {e}")
     else:
