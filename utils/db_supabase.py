@@ -1,26 +1,42 @@
-from supabase import create_client, Client
-import os
-from datetime import datetime
+# utils/db_supabase.py
 
-SUPABASE_URL = "https://jdzbdgejsnkmzcvfpxym.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkemJkZ2Vqc25rbXpjdmZweHltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMDEzOTYsImV4cCI6MjA2NDg3NzM5Nn0.ftE3LXY_LeEeP6WnDSLPjc8oTM7s-9B-q683sZTe54w"
+from supabase import create_client
+import streamlit as st
+from utils.logger import registrar_erro
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# 🔑 Chaves do Supabase
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-def salvar_perfil(usuario_id: str, perfil: dict):
-    perfil["id"] = usuario_id
-    perfil["data_criacao"] = perfil.get("data_criacao", datetime.utcnow().isoformat())
+# 🌐 Cliente Supabase
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    existing = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
-    if existing.data:
-        supabase.table("usuarios").update(perfil).eq("id", usuario_id).execute()
-    else:
-        supabase.table("usuarios").insert(perfil).execute()
+# 🔍 Verifica se o perfil existe por e-mail
+def perfil_existe_supabase(email):
+    try:
+        result = supabase.table("usuarios").select("email").eq("email", email).execute()
+        return len(result.data) > 0
+    except Exception as e:
+        registrar_erro(f"[Supabase] Erro ao verificar existência de '{email}': {e}")
+        return False
 
-def carregar_perfil(usuario_id: str):
-    result = supabase.table("usuarios").select("*").eq("id", usuario_id).single().execute()
-    return result.data if result.data else None
+# 📥 Carrega perfil completo por e-mail
+def carregar_perfil_supabase(email):
+    try:
+        result = supabase.table("usuarios").select("*").eq("email", email).single().execute()
+        return result.data
+    except Exception as e:
+        registrar_erro(f"[Supabase] Erro ao carregar perfil '{email}': {e}")
+        return None
 
-def perfil_existe(usuario_id: str):
-    result = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
-    return bool(result.data)
+# 💾 Salva ou atualiza o perfil no Supabase
+def salvar_perfil_supabase(email, dados):
+    try:
+        if perfil_existe_supabase(email):
+            supabase.table("usuarios").update(dados).eq("email", email).execute()
+        else:
+            supabase.table("usuarios").insert(dados).execute()
+        return True
+    except Exception as e:
+        registrar_erro(f"[Supabase] Erro ao salvar perfil '{email}': {e}")
+        return False
