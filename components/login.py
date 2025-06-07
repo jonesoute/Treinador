@@ -1,45 +1,25 @@
 # components/login.py
 
 import streamlit as st
-from supabase import create_client, Client
-from utils.db_supabase import supabase
-
+from utils.perfil import verificar_login
 
 def exibir_login():
-    st.title("🔐 Login do Atleta")
-    st.markdown("Acesse sua conta com seu e-mail e senha cadastrados.")
-
-    with st.form("login_form"):
+    st.sidebar.header("👤 Identificação do Atleta")
+    with st.sidebar.form("login_form"):
         email = st.text_input("E-mail")
         senha = st.text_input("Senha", type="password")
-        login = st.form_submit_button("Entrar")
-        primeiro_acesso = st.form_submit_button("🔓 Primeiro Acesso")
+        submit = st.form_submit_button("Entrar")
 
-    if primeiro_acesso:
-        st.session_state["primeiro_acesso"] = True
-        st.experimental_rerun()
-
-    if login:
-        if not email or not senha:
-            st.warning("Preencha todos os campos para entrar.")
-            return None
-
-        try:
-            supabase: Client = supabase()
-            resultado = supabase.auth.sign_in_with_password({
-                "email": email,
-                "password": senha
-            })
-
-            usuario = resultado.user
-            if usuario:
-                st.success("Login realizado com sucesso!")
-                st.session_state["usuario_id"] = usuario.id
-                st.session_state["usuario_email"] = email
-                st.experimental_rerun()
+        if submit:
+            if verificar_login(email, senha):
+                st.session_state["usuario_id"] = email
+                st.rerun()
             else:
                 st.error("E-mail ou senha inválidos.")
 
-        except Exception as e:
-            st.error(f"Erro ao tentar login: {e}")
-            return None
+    # Se o botão for clicado, redireciona para cadastro (primeiro acesso)
+    if st.sidebar.button("🚀 Primeiro Acesso"):
+        st.session_state["primeiro_acesso"] = True
+        st.rerun()
+
+    return st.session_state.get("usuario_id")
