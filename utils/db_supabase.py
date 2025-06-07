@@ -1,5 +1,3 @@
-# utils/db_supabase.py
-
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -49,4 +47,16 @@ def atualizar_perfil(usuario_id: str, novos_dados: dict) -> bool:
         return bool(resposta.data)
     except Exception as e:
         registrar_erro(f"Erro ao atualizar perfil '{usuario_id}': {e}")
+        return False
+
+def verificar_login(email: str, senha: str) -> bool:
+    try:
+        resultado = supabase.table("usuarios") \
+            .select("id") \
+            .eq("id", email) \
+            .eq("senha", senha) \
+            .execute()
+        return len(resultado.data) > 0
+    except Exception as e:
+        registrar_erro(f"Erro ao verificar login do usuário '{email}': {e}")
         return False
