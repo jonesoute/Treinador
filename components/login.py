@@ -2,7 +2,7 @@
 
 import streamlit as st
 from supabase import create_client, Client
-from utils.secrets import get_supabase_client
+from utils.db_supabase import supabase
 
 
 def exibir_login():
