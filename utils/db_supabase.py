@@ -1,0 +1,26 @@
+from supabase import create_client, Client
+import os
+from datetime import datetime
+
+SUPABASE_URL = "https://jdzbdgejsnkmzcvfpxym.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def salvar_perfil(usuario_id: str, perfil: dict):
+    perfil["id"] = usuario_id
+    perfil["data_criacao"] = perfil.get("data_criacao", datetime.utcnow().isoformat())
+
+    existing = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
+    if existing.data:
+        supabase.table("usuarios").update(perfil).eq("id", usuario_id).execute()
+    else:
+        supabase.table("usuarios").insert(perfil).execute()
+
+def carregar_perfil(usuario_id: str):
+    result = supabase.table("usuarios").select("*").eq("id", usuario_id).single().execute()
+    return result.data if result.data else None
+
+def perfil_existe(usuario_id: str):
+    result = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
+    return bool(result.data)
