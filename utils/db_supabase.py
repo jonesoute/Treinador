@@ -1,42 +1,43 @@
 # utils/db_supabase.py
 
-from supabase import create_client
-import streamlit as st
+from utils.secrets import get_supabase_client
+from supabase import Client
 from utils.logger import registrar_erro
 
-# 🔑 Chaves do Supabase
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = get_supabase_client()
 
-# 🌐 Cliente Supabase
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# 🔍 Verifica se o perfil existe por e-mail
-def perfil_existe_supabase(email):
+def perfil_existe(usuario_id: str) -> bool:
     try:
-        result = supabase.table("usuarios").select("email").eq("email", email).execute()
+        result = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
         return len(result.data) > 0
     except Exception as e:
-        registrar_erro(f"[Supabase] Erro ao verificar existência de '{email}': {e}")
+        registrar_erro(f"Erro ao verificar existência do perfil '{usuario_id}': {e}")
         return False
 
-# 📥 Carrega perfil completo por e-mail
-def carregar_perfil_supabase(email):
+def salvar_perfil(usuario_id: str, perfil: dict) -> bool:
     try:
-        result = supabase.table("usuarios").select("*").eq("email", email).single().execute()
-        return result.data
+        perfil_completo = {"id": usuario_id, **perfil}
+        resposta = supabase.table("usuarios").insert(perfil_completo).execute()
+        return resposta.status_code == 201
     except Exception as e:
-        registrar_erro(f"[Supabase] Erro ao carregar perfil '{email}': {e}")
-        return None
+        registrar_erro(f"Erro ao salvar perfil '{usuario_id}': {e}")
+        return False
 
-# 💾 Salva ou atualiza o perfil no Supabase
-def salvar_perfil_supabase(email, dados):
+def carregar_perfil(usuario_id: str) -> dict:
     try:
-        if perfil_existe_supabase(email):
-            supabase.table("usuarios").update(dados).eq("email", email).execute()
+        resultado = supabase.table("usuarios").select("*").eq("id", usuario_id).limit(1).execute()
+        if resultado.data:
+            return resultado.data[0]
         else:
-            supabase.table("usuarios").insert(dados).execute()
-        return True
+            return {}
     except Exception as e:
-        registrar_erro(f"[Supabase] Erro ao salvar perfil '{email}': {e}")
+        registrar_erro(f"Erro ao carregar perfil '{usuario_id}': {e}")
+        return {}
+
+def atualizar_perfil(usuario_id: str, novos_dados: dict) -> bool:
+    try:
+        resposta = supabase.table("usuarios").update(novos_dados).eq("id", usuario_id).execute()
+        return resposta.status_code == 200
+    except Exception as e:
+        registrar_erro(f"Erro ao atualizar perfil '{usuario_id}': {e}")
         return False
