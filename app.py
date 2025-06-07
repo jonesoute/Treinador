@@ -31,8 +31,10 @@ if not perfil_existe(usuario_id):
     perfil = exibir_formulario_perfil(usuario_id)
     if perfil:
         salvar_perfil(usuario_id, perfil)
-        st.success("✅ Perfil salvo com sucesso! Recarregue a página para continuar.")
-        st.stop()
+        st.success("✅ Perfil salvo com sucesso!")
+        st.stop()  # <- Impede erro ao seguir para próxima parte
+    else:
+        st.stop()  # <- Interrompe se ainda não tiver perfil
 else:
     perfil = carregar_perfil(usuario_id)
 
