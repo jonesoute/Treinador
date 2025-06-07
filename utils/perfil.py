@@ -1,32 +1,43 @@
 # utils/perfil.py
 
-from utils.db_supabase import supabase
+from utils.db_supabase import (
+    carregar_perfil_supabase,
+    salvar_perfil_supabase,
+    perfil_existe_supabase,
+)
 from utils.logger import registrar_erro
 
+# 🔒 Verifica se perfil existe na Supabase
 def perfil_existe(usuario_id):
     try:
-        result = supabase.table("usuarios").select("id").eq("id", usuario_id).execute()
-        return len(result.data) > 0
+        return perfil_existe_supabase(usuario_id)
     except Exception as e:
-        registrar_erro(f"[perfil_existe] Erro: {e}")
+        registrar_erro(f"Erro ao verificar existência do perfil '{usuario_id}': {e}")
         return False
 
+# 📥 Carrega perfil completo da Supabase
 def carregar_perfil(usuario_id):
     try:
-        result = supabase.table("usuarios").select("*").eq("id", usuario_id).execute()
-        if result.data:
-            return result.data[0]
-        return {}
+        return carregar_perfil_supabase(usuario_id)
     except Exception as e:
-        registrar_erro(f"[carregar_perfil] Erro: {e}")
-        return {}
+        registrar_erro(f"Erro ao carregar perfil '{usuario_id}': {e}")
+        return None
 
-def salvar_perfil(usuario_id, perfil):
+# 💾 Salva/Atualiza perfil do usuário na Supabase
+def salvar_perfil(usuario_id, dados):
     try:
-        perfil["id"] = usuario_id
-        if perfil_existe(usuario_id):
-            supabase.table("usuarios").update(perfil).eq("id", usuario_id).execute()
-        else:
-            supabase.table("usuarios").insert(perfil).execute()
+        return salvar_perfil_supabase(usuario_id, dados)
     except Exception as e:
-        registrar_erro(f"[salvar_perfil] Erro ao salvar perfil '{usuario_id}': {e}")
+        registrar_erro(f"Erro ao salvar perfil '{usuario_id}': {e}")
+        return False
+
+# 🔐 Verifica login com e-mail e senha
+def verificar_login(email, senha):
+    try:
+        perfil = carregar_perfil(email)
+        if not perfil:
+            return False
+        return perfil.get("senha") == senha
+    except Exception as e:
+        registrar_erro(f"Erro ao verificar login de '{email}': {e}")
+        return False
