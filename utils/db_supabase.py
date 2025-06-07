@@ -1,10 +1,18 @@
 # utils/db_supabase.py
 
-from utils.secrets import get_supabase_client
-from supabase import Client
-from utils.logger import registrar_erro
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-supabase: Client = get_supabase_client()
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+def get_supabase_client() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = get_supabase_client()
 
 def perfil_existe(usuario_id: str) -> bool:
     try:
