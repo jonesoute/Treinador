@@ -25,7 +25,7 @@ def exibir_login():
             return None
 
         try:
-            supabase: Client = get_supabase_client()
+            supabase: Client = supabase()
             resultado = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": senha
