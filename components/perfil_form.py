@@ -1,50 +1,58 @@
+# components/perfil_form.py
+
 import streamlit as st
 from datetime import date
+from utils.db_supabase import salvar_perfil, carregar_perfil
 
 def exibir_formulario_perfil(usuario_id):
-    st.header("📝 Preencha seu perfil inicial")
+    st.header("📝 Configurar Perfil do Atleta")
 
-    with st.form("form_perfil", clear_on_submit=False):
+    perfil_existente = carregar_perfil(usuario_id)
+
+    if perfil_existente:
+        st.success("✅ Perfil já existente carregado.")
+        return perfil_existente
+
+    with st.form("perfil_formulario"):
         nome = st.text_input("Nome completo")
-        idade = st.number_input("Idade", min_value=12, max_value=100, value=30)
-        sexo = st.radio("Sexo", ["Masculino", "Feminino"])
-        peso = st.number_input("Peso (kg)", min_value=30.0, max_value=150.0, value=70.0)
-        altura = st.number_input("Altura (cm)", min_value=130, max_value=210, value=175)
-        ftp = st.number_input("FTP estimado (W)", min_value=100, max_value=500, value=200)
-        modalidades = st.multiselect("Modalidades", ["Ciclismo", "Corrida"], default=["Ciclismo"])
-        preferencia = st.radio("Preferência de treino", ["Frequência Cardíaca", "Potência"])
+        email = st.text_input("E-mail")
+        sexo = st.selectbox("Sexo", ["Masculino", "Feminino"])
+        data_nascimento = st.date_input("Data de nascimento", min_value=date(1920, 1, 1), max_value=date.today())
+        peso = st.number_input("Peso (kg)", min_value=30.0, max_value=200.0, step=0.1)
+        altura = st.number_input("Altura (cm)", min_value=100, max_value=230)
+        ftp = st.number_input("FTP (opcional, watts)", min_value=0)
+        modalidades = st.multiselect("Modalidades praticadas", ["Ciclismo", "Corrida"], default=["Ciclismo"])
 
-        st.markdown("**📆 Disponibilidade Semanal**")
         dias_semana = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
-        dias_disponiveis = st.multiselect("Dias disponíveis para treinar:", dias_semana)
-        horas_disponiveis = {}
-        for dia in dias_disponiveis:
-            horas = st.slider(f"{dia.capitalize()}: Quantas horas?", 0.5, 5.0, 1.0, 0.5)
-            horas_disponiveis[dia] = horas
+        dias_disponiveis = st.multiselect("Dias disponíveis para treinar", dias_semana)
 
         enviar = st.form_submit_button("Salvar Perfil")
 
-        if enviar:
-            perfil = {
-                "nome": nome,
-                "idade": idade,
-                "sexo": sexo,
-                "peso": peso,
-                "altura": altura,
-                "ftp": ftp,
-                "modalidades": modalidades,
-                "preferencia": preferencia,
-                "dias_disponiveis": dias_disponiveis,
-                "horas_disponiveis": horas_disponiveis,
-                "data_criacao": date.today().isoformat()
-            }
+    if enviar:
+        hoje = date.today()
+        horas_disponiveis = {}
+        for dia in dias_disponiveis:
+            horas = st.slider(f"⏱️ Quantas horas você pode treinar na {dia}?", 0.5, 6.0, 1.0, 0.5, key=dia)
+            horas_disponiveis[dia] = horas
 
-            # Armazenar temporariamente na sessão
-            st.session_state["perfil_temp"] = perfil
-            st.success("✅ Perfil salvo com sucesso!")
+        perfil = {
+            "id": usuario_id,
+            "nome": nome,
+            "email": email,
+            "sexo": sexo,
+            "data_nascimento": str(data_nascimento),
+            "peso": peso,
+            "altura": altura,
+            "ftp": ftp,
+            "modalidades": modalidades,
+            "dias_disponiveis": dias_disponiveis,
+            "horas_disponiveis": horas_disponiveis,
+            "data_criacao": str(hoje)
+        }
 
-            # Mostra botão para recarregar app
-            if st.button("✅ OK"):
-                st.experimental_rerun()
+        salvar_perfil(perfil)
 
-            return perfil  # <- Só retorna após o botão "OK"
+        st.success("✅ Perfil salvo com sucesso!")
+        st.button("🔄 OK para atualizar", on_click=st.experimental_rerun)
+
+        return perfil
